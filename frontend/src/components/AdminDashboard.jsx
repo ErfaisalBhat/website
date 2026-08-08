@@ -422,7 +422,7 @@ const AdminDashboard = () => {
         <nav className="flex-1 px-4 space-y-2 mt-4">
           <SidebarItem 
             icon={CloudArrowUpIcon} 
-            label={isSidebarOpen ? "Upload Students" : ""} 
+            label={isSidebarOpen ? "Upload Records" : ""} 
             active={activeTab === 'upload'} 
             onClick={() => setActiveTab('upload')} 
           />
