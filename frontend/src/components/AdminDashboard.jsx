@@ -426,23 +426,24 @@ const AdminDashboard = () => {
             active={activeTab === 'upload'} 
             onClick={() => setActiveTab('upload')} 
           />
+        
           <SidebarItem 
             icon={DocumentTextIcon} 
-            label={isSidebarOpen ? "Draft Batches" : ""} 
+            label={isSidebarOpen ? "Marks Submission" : ""} 
             active={activeTab === 'drafts'} 
             onClick={() => setActiveTab('drafts')} 
             count={draftBatches.length}
           />
           <SidebarItem 
             icon={CheckBadgeIcon} 
-            label={isSidebarOpen ? "Pending Approval" : ""} 
+            label={isSidebarOpen ? "Result Approval" : ""} 
             active={activeTab === 'pending'} 
             onClick={() => setActiveTab('pending')} 
             count={pendingBatches.length}
           />
           <SidebarItem 
             icon={CheckBadgeIcon} 
-            label={isSidebarOpen ? "Approved Batches" : ""} 
+            label={isSidebarOpen ? "Published Results" : ""} 
             active={activeTab === 'approved'} 
             onClick={() => setActiveTab('approved')} 
             count={approvedBatches.length}
@@ -597,7 +598,7 @@ const AdminDashboard = () => {
                             <tr>
                               <td colSpan="5" className="p-12 text-center">
                                 <DocumentTextIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                                <p className="text-gray-400">No draft batches to assign</p>
+                                <p className="text-gray-400">No Marks Submission to assign</p>
                               </td>
                             </tr>
                           )}
@@ -684,7 +685,7 @@ const AdminDashboard = () => {
             {activeTab === 'pending' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Pending Approvals</h2>
+                  <h2 className="text-2xl font-bold text-gray-800">Result Approvals</h2>
                   <span className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-full text-sm font-bold">
                     {pendingBatches.length} Awaiting Review
                   </span>
@@ -740,7 +741,7 @@ const AdminDashboard = () => {
                 {!selectedPhotoBatch ? (
                   <>
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-800">Approved Batches</h2>
+                      <h2 className="text-2xl font-bold text-gray-800">Published Results</h2>
                       <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold">
                         {approvedBatches.length} Verified
                       </span>
@@ -793,7 +794,7 @@ const AdminDashboard = () => {
                           ))}
                           {approvedBatches.length === 0 && (
                             <tr>
-                              <td colSpan="4" className="p-12 text-center text-gray-400">No approved batches found</td>
+                              <td colSpan="4" className="p-12 text-center text-gray-400">No Published Results found</td>
                             </tr>
                           )}
                         </tbody>
