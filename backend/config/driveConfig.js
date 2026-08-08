@@ -1,10 +1,11 @@
 const { google } = require('googleapis');
-require('dotenv').config();
+const path = require('path');
+const credentials = require('../uploads/credentials.json');
 
-const client_id = process.env.GOOGLE_DRIVE_CLIENT_ID;
-const client_secret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
-const redirect_uri = process.env.GOOGLE_DRIVE_REDIRECT_URI;
-const folder_id = process.env.GOOGLE_DRIVE_FOLDER_ID;
+const client_id = credentials.web.client_id;
+const client_secret = credentials.web.client_secret;
+const redirect_uri = credentials.web.redirect_uris[0];
+const folder_id = '189_daBaxcYjcgUV2gO0rdLF5D0Gt9m_Z';
 
 const oAuth2Client = new google.auth.OAuth2(
   client_id,
@@ -13,8 +14,9 @@ const oAuth2Client = new google.auth.OAuth2(
 );
 
 const SCOPES = [
-  'httpss://www.googleapis.com/auth/drive.file',
-  'httpss://www.googleapis.com/auth/drive.metadata.readonly',
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
 ];
 
 module.exports = {

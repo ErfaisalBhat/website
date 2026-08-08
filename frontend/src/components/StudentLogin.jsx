@@ -54,8 +54,10 @@ const StudentLogin = () => {
     setLoading(true);
 
     try {
+      // Send the native YYYY-MM-DD format directly from the date picker
       const dataToSend = {
-        ...formData
+        rollNo: formData.rollNo.trim(),
+        dateOfBirth: formData.dateOfBirth // Already YYYY-MM-DD
       };
 
       console.log('Sending data:', dataToSend);

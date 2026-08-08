@@ -11,7 +11,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   TrashIcon,
-  EyeIcon
+  EyeIcon,
+  PhotoIcon,
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -45,6 +47,7 @@ const AdminDashboard = () => {
   const [subject, setSubject] = useState('');
   const [draftBatches, setDraftBatches] = useState([]);
   const [pendingBatches, setPendingBatches] = useState([]);
+  const [approvedBatches, setApprovedBatches] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [currentBatch, setCurrentBatch] = useState(null);
@@ -53,12 +56,77 @@ const AdminDashboard = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [newPassword, setNewPassword] = useState('');
+  const [students, setStudents] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedPhotoBatch, setSelectedPhotoBatch] = useState(null);
 
   useEffect(() => {
     fetchTeachers();
     fetchDraftBatches();
     fetchPendingBatches();
+    fetchApprovedBatches();
+    fetchStudents();
   }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/all-students`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      setStudents(data);
+    } catch (err) { toast.error('Error fetching students'); }
+  };
+
+  const fetchApprovedBatches = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/approved-batches`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      setApprovedBatches(data);
+    } catch (err) { toast.error('Error fetching approved batches'); }
+  };
+
+  const handleManagePhotos = async (batch) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/batch-preview/${batch._id}`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      setSelectedPhotoBatch({ ...batch, results: data.results });
+    } catch (err) { toast.error('Error loading batch photos'); }
+  };
+
+  const handlePhotoUpload = async (studentId, file) => {
+    const formData = new FormData();
+    formData.append('photo', file);
+    
+    const loadingToast = toast.loading('Uploading photo...');
+    
+    try {
+      const res = await fetch(`${API_URL}/api/admin/upload-photo/${studentId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+        body: formData
+      });
+      const data = await res.json();
+      
+      toast.dismiss(loadingToast);
+      
+      if (res.ok) {
+        toast.success(data.message);
+        if (previewData) fetchPreview(previewData.batchId);
+        if (selectedPhotoBatch) handleManagePhotos(selectedPhotoBatch);
+        fetchStudents();
+      } else {
+        toast.error(data.message || 'Upload failed');
+      }
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error('Photo upload failed');
+    }
+  };
 
   const fetchTeachers = async () => {
     try {
@@ -152,6 +220,26 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteApproved = async (batchId) => {
+    if (!window.confirm('Are you sure you want to delete this approved batch? This will permanently remove these student results and they will no longer be verifiable.')) return;
+
+    try {
+      const res = await fetch(`${API_URL}/api/admin/approved-batch/${batchId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(data.message || 'Approved batch deleted');
+        fetchApprovedBatches();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error('Error deleting approved batch');
+    }
+  };
+
   const handleApproval = async (batchId, status) => {
     const endpoint = status === 'approve' ? 'approve-batch' : 'disapprove-batch';
     try {
@@ -163,6 +251,7 @@ const AdminDashboard = () => {
       if (res.ok) {
         toast.success(data.message || `Batch ${status}d successfully`);
         fetchPendingBatches();
+        fetchApprovedBatches();
         setPreviewData(null);
       } else toast.error(data.message);
     } catch (err) { toast.error('Action failed'); }
@@ -352,6 +441,19 @@ const AdminDashboard = () => {
             count={pendingBatches.length}
           />
           <SidebarItem 
+            icon={CheckBadgeIcon} 
+            label={isSidebarOpen ? "Approved Batches" : ""} 
+            active={activeTab === 'approved'} 
+            onClick={() => setActiveTab('approved')} 
+            count={approvedBatches.length}
+          />
+          <SidebarItem 
+            icon={PhotoIcon} 
+            label={isSidebarOpen ? "Student Photos" : ""} 
+            active={activeTab === 'photos'} 
+            onClick={() => setActiveTab('photos')} 
+          />
+          <SidebarItem 
             icon={UsersIcon} 
             label={isSidebarOpen ? "Manage Teachers" : ""} 
             active={activeTab === 'teachers'} 
@@ -426,73 +528,156 @@ const AdminDashboard = () => {
 
             {activeTab === 'drafts' && (
               <div className="space-y-4">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Draft Batches</h2>
-                  <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">
-                    {draftBatches.length} Available
-                  </span>
-                </div>
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
-                  <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Details</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Subject</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Students</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {draftBatches.map(batch => (
-                        <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-4">
-                            <p className="font-bold text-gray-800">{batch.batchName}</p>
-                            <p className="text-xs text-gray-400">Created: {new Date(batch.createdAt).toLocaleDateString()}</p>
-                          </td>
-                          <td className="p-4 text-gray-600">{batch.subject}</td>
-                          <td className="p-4 text-gray-600">{batch.studentCount}</td>
-                          <td className="p-4">
-                            <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">DRAFT</span>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-4">
-                              <button 
-                                onClick={() => setCurrentBatch(batch._id)} 
-                                className="text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1 group"
-                              >
-                                Assign Teacher
-                                <span className="transform group-hover:translate-x-1 transition-transform">→</span>
-                              </button>
-                              <button 
-                                onClick={() => fetchPreview(batch._id)}
-                                className="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
-                                title="Preview Draft"
-                              >
-                                <EyeIcon className="w-5 h-5" />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteDraft(batch._id)}
-                                className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
-                                title="Delete Draft"
-                              >
-                                <TrashIcon className="w-5 h-5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {draftBatches.length === 0 && (
-                        <tr>
-                          <td colSpan="5" className="p-12 text-center">
-                            <DocumentTextIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                            <p className="text-gray-400">No draft batches to assign</p>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                {!selectedPhotoBatch ? (
+                  <>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800">Draft Batches</h2>
+                      <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">
+                        {draftBatches.length} Available
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Details</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Subject</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Students</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {draftBatches.map(batch => (
+                            <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4">
+                                <p className="font-bold text-gray-800">{batch.batchName}</p>
+                                <p className="text-xs text-gray-400">Created: {new Date(batch.createdAt).toLocaleDateString()}</p>
+                              </td>
+                              <td className="p-4 text-gray-600">{batch.subject}</td>
+                              <td className="p-4 text-gray-600">{batch.studentCount}</td>
+                              <td className="p-4">
+                                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">DRAFT</span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-4">
+                                  <button 
+                                    onClick={() => setCurrentBatch(batch._id)} 
+                                    className="text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1 group"
+                                  >
+                                    Assign Teacher
+                                    <span className="transform group-hover:translate-x-1 transition-transform">→</span>
+                                  </button>
+                                  <button 
+                                    onClick={() => handleManagePhotos(batch)}
+                                    className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
+                                    title="Manage Photographs"
+                                  >
+                                    <PhotoIcon className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => fetchPreview(batch._id)}
+                                    className="text-gray-500 hover:text-blue-600 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Preview Draft"
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteDraft(batch._id)}
+                                    className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Delete Draft"
+                                  >
+                                    <TrashIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {draftBatches.length === 0 && (
+                            <tr>
+                              <td colSpan="5" className="p-12 text-center">
+                                <DocumentTextIcon className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                                <p className="text-gray-400">No draft batches to assign</p>
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-6 animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center justify-between">
+                      <button 
+                        onClick={() => setSelectedPhotoBatch(null)}
+                        className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold transition-colors"
+                      >
+                        <ArrowLeftOnRectangleIcon className="w-5 h-5 rotate-180" />
+                        Back to Drafts
+                      </button>
+                      <h2 className="text-2xl font-black text-gray-800 tracking-tight">{selectedPhotoBatch.subject}</h2>
+                      <div className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold border border-blue-100">
+                        {selectedPhotoBatch.results.length} Students
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-800 text-white">
+                          <tr>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider">Student Name</th>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider text-center">Roll Number</th>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider text-right">Upload Photograph</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedPhotoBatch.results.map(r => (
+                            <tr key={r._id} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="p-5">
+                                <div className="flex items-center gap-4">
+                                  {r.student?.profileImageId ? (
+                                    <img 
+                                      src={r.student.profileImageId} 
+                                      className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
+                                      alt="" 
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">
+                                      <PhotoIcon className="w-5 h-5" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-bold text-gray-800">{r.candidateNameEnglish}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase font-black">{r.enrolmentNo}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-5 text-center font-mono font-bold text-blue-600 bg-blue-50/30">
+                                {r.rollNo}
+                              </td>
+                              <td className="p-5 text-right">
+                                <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
+                                  <CloudArrowUpIcon className="w-4 h-4" />
+                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -542,6 +727,242 @@ const AdminDashboard = () => {
                       {pendingBatches.length === 0 && (
                         <tr>
                           <td colSpan="4" className="p-12 text-center text-gray-400">No batches pending approval</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'approved' && (
+              <div className="space-y-4">
+                {!selectedPhotoBatch ? (
+                  <>
+                    <div className="flex justify-between items-center mb-6">
+                      <h2 className="text-2xl font-bold text-gray-800">Approved Batches</h2>
+                      <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold">
+                        {approvedBatches.length} Verified
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
+                       <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Info</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Teacher</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Students</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {approvedBatches.map(batch => (
+                            <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4">
+                                <p className="font-bold text-gray-800">{batch.batchName}</p>
+                                <p className="text-xs text-gray-400">{batch.subject}</p>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                                    {batch.teacher.name[0]}
+                                  </div>
+                                  <span className="text-gray-700">{batch.teacher.name}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-center text-gray-600">{batch.studentCount}</td>
+                              <td className="p-4">
+                                <div className="flex justify-end gap-2 items-center">
+                                  <button 
+                                    onClick={() => handleManagePhotos(batch)}
+                                    className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
+                                    title="Manage Photographs"
+                                  >
+                                    <PhotoIcon className="w-5 h-5" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteApproved(batch._id)}
+                                    className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Delete Approved Batch"
+                                  >
+                                    <TrashIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {approvedBatches.length === 0 && (
+                            <tr>
+                              <td colSpan="4" className="p-12 text-center text-gray-400">No approved batches found</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-6 animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center justify-between">
+                      <button 
+                        onClick={() => setSelectedPhotoBatch(null)}
+                        className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold transition-colors"
+                      >
+                        <ArrowLeftOnRectangleIcon className="w-5 h-5 rotate-180" />
+                        Back to Approved
+                      </button>
+                      <h2 className="text-2xl font-black text-gray-800 tracking-tight">{selectedPhotoBatch.subject}</h2>
+                      <div className="bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-xs font-bold border border-blue-100">
+                        {selectedPhotoBatch.results.length} Students
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-800 text-white">
+                          <tr>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider">Student Name</th>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider text-center">Roll Number</th>
+                            <th className="p-5 text-sm font-bold uppercase tracking-wider text-right">Upload Photograph</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {selectedPhotoBatch.results.map(r => (
+                            <tr key={r._id} className="hover:bg-gray-50/80 transition-colors">
+                              <td className="p-5">
+                                <div className="flex items-center gap-4">
+                                  {r.student?.profileImageId ? (
+                                    <img 
+                                      src={r.student.profileImageId} 
+                                      className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
+                                      alt="" 
+                                    />
+                                  ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">
+                                      <PhotoIcon className="w-5 h-5" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="font-bold text-gray-800">{r.candidateNameEnglish}</p>
+                                    <p className="text-[10px] text-gray-400 uppercase font-black">{r.enrolmentNo}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-5 text-center font-mono font-bold text-blue-600 bg-blue-50/30">
+                                {r.rollNo}
+                              </td>
+                              <td className="p-5 text-right">
+                                <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
+                                  <CloudArrowUpIcon className="w-4 h-4" />
+                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'photos' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Student Photographs</h2>
+                    <p className="text-gray-500">Manage profile pictures for all registered students.</p>
+                  </div>
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Search name or email..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
+                  <table className="w-full text-left">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Student</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Contact / Roll No</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Status</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {students
+                        .filter(s => 
+                          s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          s.email.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map(student => (
+                        <tr key={student._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="p-4">
+                            <div className="flex items-center gap-4">
+                              {student.profileImageId ? (
+                                <img 
+                                  src={student.profileImageId} 
+                                  alt="" 
+                                  className="w-12 h-12 rounded-lg object-cover border"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
+                                  <PhotoIcon className="w-6 h-6" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-bold text-gray-800">{student.name}</p>
+                                <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Student ID: {student._id.slice(-6)}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <p className="text-sm font-medium text-gray-700">{student.email}</p>
+                            <p className="text-xs text-gray-400">Roll No: {student.rollNo || 'Not Assigned'}</p>
+                          </td>
+                          <td className="p-4 text-center">
+                            {student.profileImageId ? (
+                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">HAS PHOTO</span>
+                            ) : (
+                              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-bold">MISSING</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-right">
+                            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all inline-block shadow-sm">
+                              {student.profileImageId ? 'Change Photo' : 'Upload Photo'}
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handlePhotoUpload(student._id, e.target.files[0]);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                      {students.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="p-12 text-center text-gray-400">No students found</td>
                         </tr>
                       )}
                     </tbody>
@@ -671,6 +1092,7 @@ const AdminDashboard = () => {
                   <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
                     <tr>
                       <th className="p-2 border-b border-r bg-gray-50 sticky left-0 z-30 font-bold text-gray-500 uppercase whitespace-nowrap">Roll No</th>
+                      <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Photo</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">S.No</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Enrolment</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
@@ -709,6 +1131,32 @@ const AdminDashboard = () => {
                     {previewData.results.map(r => (
                       <tr key={r._id} className="hover:bg-gray-50 transition-colors">
                         <td className="p-2 border-r bg-white sticky left-0 z-10 font-mono font-bold text-blue-600 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{r.rollNo}</td>
+                        <td className="p-2 border-r text-center whitespace-nowrap">
+                          <div className="flex flex-col items-center gap-1">
+                            {r.student?.profileImageId ? (
+                              <img 
+                                src={r.student.profileImageId} 
+                                alt="Student" 
+                                className="w-8 h-8 rounded-full object-cover border"
+                              />
+                            ) : (
+                              <span className="text-[8px] text-gray-400">No Photo</span>
+                            )}
+                            <label className="cursor-pointer bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[8px] hover:bg-blue-100 transition-colors">
+                              {r.student?.profileImageId ? 'Change' : 'Upload'}
+                              <input 
+                                type="file" 
+                                className="hidden" 
+                                accept="image/*"
+                                onChange={(e) => {
+                                  if (e.target.files?.[0]) {
+                                    handlePhotoUpload(r.student._id, e.target.files[0]);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        </td>
                         <td className="p-2 border-r text-gray-400 text-center">{r.sNo}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.enrolmentNo}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.dateOfBirth}</td>

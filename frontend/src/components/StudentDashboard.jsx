@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CertificateTemplate from './CertificateTemplate';
 import StudentHeader from './StudentHeader';
-import html2pdf from "html2pdf.js";
+import html2pdf from 'html2pdf.js';
+import { useReactToPrint } from 'react-to-print';
 import ResultSearch from './ResultDec';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -16,6 +17,44 @@ const StudentDashboard = () => {
   const [selectedResult, setSelectedResult] = useState(null);
   const [showDeclaredResults, setShowDeclaredResults] = useState(false);
   const navigate = useNavigate();
+  const certificateRef = useRef();
+
+  const handlePrintCertificate = useReactToPrint({
+    contentRef: certificateRef,
+    documentTitle: `${selectedResult?.rollNo || 'Certificate'}`,
+    onAfterPrint: () => console.log('Print complete'),
+    pageStyle: '@page { size: A4; margin: 0; } @media print { body { margin: 0; } }',
+  });
+
+  const handleDownloadPDF = async () => {
+  const element = certificateRef.current;
+  const opt = {
+    margin: 0,
+    filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      letterRendering: true,
+      allowTaint: true,
+      logging: true,
+      imageTimeout: 15000,
+      width: 794,
+      height: 1123,
+      windowWidth: 794,
+      windowHeight: 1123,
+    },
+    jsPDF: { unit: 'px', format: [794, 1123], orientation: 'portrait', hotfixes: ['px_scaling'] }
+  };
+  try {
+    await html2pdf().set(opt).from(element).save();
+  } catch (err) {
+    console.error("PDF Gen Error:", err);
+    alert("Failed to generate PDF. Please try again.");
+  }
+};
+
+
 
   useEffect(() => {
     const token = localStorage.getItem('studentToken');
@@ -45,98 +84,19 @@ const StudentDashboard = () => {
   const handleDownloadCertificate = async (resultId) => {
     try {
       const token = localStorage.getItem('studentToken');
-      const response = await fetch(`${API_URL}/api/student/certificate/${resultId}`, {
+      const response = await fetch(`${API_URL}/api/student/results`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       if (response.status === 401) { logoutStudent(); navigate('/student/login'); return; }
       if (response.ok) {
         const data = await response.json();
-        setSelectedResult(data);
+        const result = data.find(r => r._id === resultId);
+        setSelectedResult(result);
       } else {
         setError('Failed to download certificate');
       }
     } catch (error) {
       setError('Failed to download certificate');
-    }
-  };
-
-  const handlePrintCertificate = async () => {
-    try {
-      const printableContent = document.getElementById("printableContent");
-      if (!printableContent) { alert("No content to print!"); return; }
-
-      const candidateName = selectedResult?.rollNo || "Certificate";
-
-      const loadingSpinner = document.createElement('div');
-      loadingSpinner.className = "fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-[2px]";
-      loadingSpinner.innerHTML = `
-        <div class="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center gap-4">
-          <div class="animate-spin rounded-full h-10 w-10 border-4 border-green-600 border-t-transparent"></div>
-          <div class="text-gray-700 font-bold">Generating Secure PDF...</div>
-          <div class="text-gray-400 text-xs text-center">Please wait, this may take a moment.</div>
-        </div>
-      `;
-      document.body.appendChild(loadingSpinner);
-
-      // Preload fonts
-      await document.fonts.ready;
-      const fontFaces = [
-        new FontFace('Old English Text MT', 'url(/fonts/oldenglishtextmt.ttf)'),
-        new FontFace('Kokila', 'url(/fonts/Kokila.ttf)'),
-        new FontFace('Arya', 'url(/fonts/Arya-Bold.ttf)', { weight: 'bold' }),
-      ];
-      await Promise.all(fontFaces.map(f => f.load().then(loaded => document.fonts.add(loaded)).catch(() => {})));
-      await new Promise(r => setTimeout(r, 500));
-
-      // Capture exact content height to eliminate blank space
-      const contentHeight = printableContent.scrollHeight;
-      const contentWidth = printableContent.scrollWidth;
-      const mmHeight = (contentHeight * 25.4) / 96;
-      const mmWidth = (contentWidth * 25.4) / 96;
-
-      const opt = {
-        margin: 0,
-        filename: `${candidateName}_Certificate.pdf`,
-        image: { type: 'jpeg', quality: 0.93 },
-        html2canvas: {
-          scale: 4,
-          useCORS: true,
-          allowTaint: true,
-          letterRendering: true,
-          logging: false,
-          scrollX: 0,
-          scrollY: 0,
-          width: contentWidth,
-          height: contentHeight,
-          windowWidth: contentWidth,
-          backgroundColor: '#ffffff',
-        },
-        jsPDF: {
-          unit: 'mm',
-          format: [mmWidth, mmHeight],
-          orientation: 'portrait',
-          compress: true,
-        },
-        pagebreak: { mode: ['avoid-all'] }
-      };
-
-      await html2pdf()
-        .set(opt)
-        .from(printableContent)
-        .save()
-        .then(() => {
-          document.body.removeChild(loadingSpinner);
-          alert('Certificate downloaded successfully!');
-        })
-        .catch(err => {
-          console.error("PDF Gen Error:", err);
-          document.body.removeChild(loadingSpinner);
-          alert("Failed to generate PDF. Please try again.");
-        });
-
-    } catch (error) {
-      console.error("Error:", error);
-      alert("An error occurred while processing the certificate.");
     }
   };
 
@@ -337,7 +297,8 @@ const StudentDashboard = () => {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
               <h3 className="text-lg font-bold text-gray-800">Certificate Preview</h3>
               <div className="flex gap-3">
-                <button onClick={handlePrintCertificate}
+
+                <button onClick={handleDownloadPDF}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm transition-colors text-sm">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -350,8 +311,8 @@ const StudentDashboard = () => {
                 </button>
               </div>
             </div>
-            <div className="flex justify-center bg-gray-50 overflow-hidden">
-              <div id="printableContent">
+            <div className="flex justify-center bg-gray-50 overflow-auto">
+              <div ref={certificateRef} id="printableContent" className="bg-white">
                 <CertificateTemplate certificateData={selectedResult} />
               </div>
             </div>

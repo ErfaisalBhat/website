@@ -5,8 +5,10 @@ const {
   uploadStudents, 
   assignBatch, 
   getDraftBatches, 
-  getTeachers, 
-  getPendingResults, 
+  getTeachers,
+  getStudents,
+  getApprovedBatches,
+  getPendingResults,
   approveBatch, 
   disapproveBatch,
   getPendingBatchPreview,
@@ -14,7 +16,9 @@ const {
   removeTeacher,
   changeTeacherPassword,
   deleteDraftBatch,
-  updateBatchResults
+  deleteApprovedBatch,
+  updateBatchResults,
+  uploadStudentPhoto
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -25,11 +29,15 @@ router.use(protect);
 router.use(admin);
 
 router.post('/upload-students', upload.single('file'), uploadStudents);
+router.post('/upload-photo/:studentId', upload.single('photo'), uploadStudentPhoto);
 router.post('/assign-batch', assignBatch);
 router.get('/draft-batches', getDraftBatches);
 router.delete('/draft-batch/:batchId', deleteDraftBatch);
 router.get('/teachers', getTeachers);
+router.get('/all-students', getStudents);
 router.get('/pending-results', getPendingResults);
+router.get('/approved-batches', getApprovedBatches);
+router.delete('/approved-batch/:batchId', deleteApprovedBatch);
 router.get('/batch-preview/:batchId', getPendingBatchPreview);
 router.put('/update-batch-results', updateBatchResults);
 router.post('/approve-batch/:batchId', approveBatch);

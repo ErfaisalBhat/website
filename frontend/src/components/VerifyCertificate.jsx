@@ -78,40 +78,66 @@ const VerifyCertificate = () => {
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                   </div>
-                  <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-8 bg-white">
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Student Name</label>
-                        <p className="text-xl font-bold text-gray-800">{result.studentName}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Roll Number</label>
-                        <p className="text-lg font-semibold text-gray-700">{result.rollNo}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Enrollment Number</label>
-                        <p className="text-lg font-semibold text-gray-700">{result.enrolmentNo}</p>
-                      </div>
+                  <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 bg-white">
+                    <div className="md:col-span-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-8 md:pb-0">
+                      {result.profileImageId ? (
+                        <div className="relative">
+                          <img 
+                            src={result.profileImageId} 
+                            alt="Student" 
+                            className="w-32 h-40 object-cover rounded-lg border-2 border-gray-100 shadow-md"
+                          />
+                          <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-32 h-40 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
+                          <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                          <span className="text-[10px] font-bold uppercase">No Photo</span>
+                        </div>
+                      )}
+                      <p className="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Verified Identity</p>
                     </div>
-                    <div className="space-y-6">
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subject/Course</label>
-                        <p className="text-lg font-semibold text-gray-700">{result.subject}</p>
+                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Student Name</label>
+                          <p className="text-xl font-bold text-gray-800">{result.studentName}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Roll Number</label>
+                          <p className="text-lg font-semibold text-gray-700">{result.rollNo}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Enrollment Number</label>
+                          <p className="text-lg font-semibold text-gray-700">{result.enrolmentNo}</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
-                        <p className="text-lg font-semibold text-gray-700">
-                          {new Date(result.issuedAt).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                      <div className="pt-2">
-                        <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200">
-                          Status: {result.status}
-                        </span>
+                      <div className="space-y-6">
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subject/Course</label>
+                          <p className="text-lg font-semibold text-gray-700">{result.subject}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
+                          <p className="text-lg font-semibold text-gray-700">
+                            {new Date(result.issuedAt).toLocaleDateString('en-GB', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric'
+                            })}
+                          </p>
+                        </div>
+                        <div className="pt-2">
+                          <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200">
+                            Status: {result.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
