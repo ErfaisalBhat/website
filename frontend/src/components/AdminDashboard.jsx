@@ -8,7 +8,6 @@ import {
   DocumentTextIcon, 
   CheckBadgeIcon,
   ArrowLeftOnRectangleIcon,
-  Bars3Icon,
   XMarkIcon,
   TrashIcon,
   EyeIcon,
@@ -18,19 +17,19 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const SidebarItem = ({ icon: Icon, label, active, onClick, count }) => (
+const NavItem = ({ icon: Icon, label, active, onClick, count }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-      active 
-        ? 'bg-blue-600 text-white shadow-md' 
-        : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+      active
+        ? 'bg-blue-600 text-white'
+        : 'text-gray-200 hover:bg-gray-700 hover:text-white'
     }`}
   >
-    <Icon className="w-5 h-5" />
-    <span className="font-medium flex-1 text-left">{label}</span>
+    <Icon className="w-4 h-4" />
+    <span>{label}</span>
     {count > 0 && (
-      <span className={`text-xs px-2 py-0.5 rounded-full ${active ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-600'}`}>
+      <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-blue-600' : 'bg-blue-500 text-white'}`}>
         {count}
       </span>
     )}
@@ -40,7 +39,6 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, count }) => (
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   // Existing state
   const [file, setFile] = useState(null);
@@ -85,7 +83,7 @@ const AdminDashboard = () => {
       });
       const data = await res.json();
       setApprovedBatches(data);
-    } catch (err) { toast.error('Error fetching approved batches'); }
+    } catch (err) { toast.error('Error fetching Published Results'); }
   };
 
   const handleManagePhotos = async (batch) => {
@@ -161,6 +159,7 @@ const AdminDashboard = () => {
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file || !subject) return toast.error('Please select file and subject');
+    if (!window.confirm(`Are you sure you want to submit this student record batch for "${subject}"? Please verify the file before proceeding.`)) return;
     const formData = new FormData();
     formData.append('file', file);
     formData.append('subject', subject);
@@ -405,81 +404,70 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Sidebar */}
-      <aside 
-        className={`${
-          isSidebarOpen ? 'w-72' : 'w-20'
-        } bg-white border-r transition-all duration-300 flex flex-col z-40`}
-      >
-        <div className="p-6 flex items-center justify-between">
-          {isSidebarOpen && <h1 className="text-xl font-bold text-blue-600">Admin Panel</h1>}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 rounded-lg hover:bg-gray-100">
-            {isSidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-          </button>
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
+      {/* Top Navbar */}
+      <nav className="bg-gray-900 text-white flex items-center justify-between px-6 py-3 z-40 shadow-md flex-wrap gap-2">
+        <div className="flex items-center gap-6 flex-wrap">
+          <h1 className="text-lg font-bold text-white whitespace-nowrap">Admin Panel</h1>
+          <div className="flex items-center gap-1 flex-wrap">
+            <NavItem
+              icon={CloudArrowUpIcon}
+              label="Upload Records"
+              active={activeTab === 'upload'}
+              onClick={() => setActiveTab('upload')}
+            />
+            <NavItem
+              icon={DocumentTextIcon}
+              label="Marks Submission"
+              active={activeTab === 'drafts'}
+              onClick={() => setActiveTab('drafts')}
+              count={draftBatches.length}
+            />
+            <NavItem
+              icon={CheckBadgeIcon}
+              label="Result Approval"
+              active={activeTab === 'pending'}
+              onClick={() => setActiveTab('pending')}
+              count={pendingBatches.length}
+            />
+            <NavItem
+              icon={PhotoIcon}
+              label="Student Photos"
+              active={activeTab === 'photos'}
+              onClick={() => setActiveTab('photos')}
+            />
+            <NavItem
+              icon={CheckBadgeIcon}
+              label="Published Results"
+              active={activeTab === 'approved'}
+              onClick={() => setActiveTab('approved')}
+              count={approvedBatches.length}
+            />
+            <NavItem
+              icon={UsersIcon}
+              label="Manage Teachers"
+              active={activeTab === 'teachers'}
+              onClick={() => setActiveTab('teachers')}
+            />
+          </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <SidebarItem 
-            icon={CloudArrowUpIcon} 
-            label={isSidebarOpen ? "Upload Records" : ""} 
-            active={activeTab === 'upload'} 
-            onClick={() => setActiveTab('upload')} 
-          />
-        
-          <SidebarItem 
-            icon={DocumentTextIcon} 
-            label={isSidebarOpen ? "Marks Submission" : ""} 
-            active={activeTab === 'drafts'} 
-            onClick={() => setActiveTab('drafts')} 
-            count={draftBatches.length}
-          />
-          <SidebarItem 
-            icon={CheckBadgeIcon} 
-            label={isSidebarOpen ? "Result Approval" : ""} 
-            active={activeTab === 'pending'} 
-            onClick={() => setActiveTab('pending')} 
-            count={pendingBatches.length}
-          />
-          <SidebarItem 
-            icon={CheckBadgeIcon} 
-            label={isSidebarOpen ? "Published Results" : ""} 
-            active={activeTab === 'approved'} 
-            onClick={() => setActiveTab('approved')} 
-            count={approvedBatches.length}
-          />
-          <SidebarItem 
-            icon={PhotoIcon} 
-            label={isSidebarOpen ? "Student Photos" : ""} 
-            active={activeTab === 'photos'} 
-            onClick={() => setActiveTab('photos')} 
-          />
-          <SidebarItem 
-            icon={UsersIcon} 
-            label={isSidebarOpen ? "Manage Teachers" : ""} 
-            active={activeTab === 'teachers'} 
-            onClick={() => setActiveTab('teachers')} 
-          />
-        </nav>
-
-        <div className="p-4 border-t">
-          <button 
-            onClick={logout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors ${!isSidebarOpen && 'justify-center'}`}
-          >
-            <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            {isSidebarOpen && <span className="font-medium">Logout</span>}
-          </button>
-        </div>
-      </aside>
+        <button
+          onClick={logout}
+          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 rounded-md transition-colors whitespace-nowrap"
+        >
+          <ArrowLeftOnRectangleIcon className="w-4 h-4" />
+          <span>Logout</span>
+        </button>
+      </nav>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
         <div className="flex-1 overflow-auto p-8">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'upload' && (
-              <div className="bg-white p-8 rounded-2xl shadow-sm max-w-2xl border">
+              <div className="bg-white p-8 rounded-2xl shadow-sm border">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-800">Upload New Batch</h2>
@@ -521,7 +509,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
-                    Create Draft Batch
+                    Upload New Batch
                   </button>
                 </form>
               </div>
@@ -532,7 +520,7 @@ const AdminDashboard = () => {
                 {!selectedPhotoBatch ? (
                   <>
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-800">Draft Batches</h2>
+                      <h2 className="text-2xl font-bold text-gray-800">Marks Submission</h2>
                       <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">
                         {draftBatches.length} Available
                       </span>
@@ -544,6 +532,7 @@ const AdminDashboard = () => {
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Details</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Subject</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Students</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Date</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
                           </tr>
@@ -557,6 +546,7 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-4 text-gray-600">{batch.subject}</td>
                               <td className="p-4 text-gray-600">{batch.studentCount}</td>
+                              <td className="p-4 text-gray-500">{new Date(batch.createdAt).toLocaleDateString()}</td>
                               <td className="p-4">
                                 <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">DRAFT</span>
                               </td>
@@ -685,7 +675,7 @@ const AdminDashboard = () => {
             {activeTab === 'pending' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Result Approvals</h2>
+                  <h2 className="text-2xl font-bold text-gray-800">Result Approval</h2>
                   <span className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-full text-sm font-bold">
                     {pendingBatches.length} Awaiting Review
                   </span>
@@ -697,6 +687,7 @@ const AdminDashboard = () => {
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Info</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Teacher</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Students</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Date</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
                       </tr>
                     </thead>
@@ -716,6 +707,9 @@ const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="p-4 text-center text-gray-600">{batch.studentCount}</td>
+                          <td className="p-4 text-gray-500">
+                            {batch.submittedAt ? new Date(batch.submittedAt).toLocaleDateString() : '—'}
+                          </td>
                           <td className="p-4">
                             <div className="flex justify-end gap-2">
                               <button onClick={() => fetchPreview(batch._id)} className="px-4 py-2 text-sm font-bold bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">Preview</button>
@@ -727,7 +721,7 @@ const AdminDashboard = () => {
                       ))}
                       {pendingBatches.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="p-12 text-center text-gray-400">No batches pending approval</td>
+                          <td colSpan="5" className="p-12 text-center text-gray-400">No batches Result Approval</td>
                         </tr>
                       )}
                     </tbody>
@@ -753,6 +747,7 @@ const AdminDashboard = () => {
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Info</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Teacher</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Students</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Date</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
                           </tr>
                         </thead>
@@ -772,6 +767,9 @@ const AdminDashboard = () => {
                                 </div>
                               </td>
                               <td className="p-4 text-center text-gray-600">{batch.studentCount}</td>
+                              <td className="p-4 text-gray-500">
+                                {batch.approvedAt ? new Date(batch.approvedAt).toLocaleDateString() : '—'}
+                              </td>
                               <td className="p-4">
                                 <div className="flex justify-end gap-2 items-center">
                                   <button 
@@ -794,7 +792,7 @@ const AdminDashboard = () => {
                           ))}
                           {approvedBatches.length === 0 && (
                             <tr>
-                              <td colSpan="4" className="p-12 text-center text-gray-400">No Published Results found</td>
+                              <td colSpan="5" className="p-12 text-center text-gray-400">No Published Results found</td>
                             </tr>
                           )}
                         </tbody>

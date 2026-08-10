@@ -66,11 +66,33 @@ const TeacherDashboard = () => {
     finally { setLoading(false); }
   };
 
+  const computeRemarkPreview = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
+    const iaMax = iaMaxMarks || 0;
+    const meMax = meMaxMarks || 0;
+    const iaPercent = iaMax > 0 ? (iaMarks / iaMax) * 100 : 0;
+    const mePercent = meMax > 0 ? (meMarks / meMax) * 100 : 0;
+
+    if (iaPercent < 40 || mePercent < 40) {
+      return { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
+    }
+    const totalMax = iaMax + meMax;
+    const overallPercent = totalMax > 0 ? ((iaMarks + meMarks) / totalMax) * 100 : 0;
+
+    if (overallPercent >= 75) return { resultRemarkEnglish: 'Passed, Distinction', resultRemarkHindi: 'उत्तीर्ण, विशिष्टता' };
+    if (overallPercent >= 60) return { resultRemarkEnglish: 'Passed, First Division', resultRemarkHindi: 'उत्तीर्ण, प्रथम श्रेणी' };
+    if (overallPercent >= 55) return { resultRemarkEnglish: 'Passed, Second Division', resultRemarkHindi: 'उत्तीर्ण, द्वितीय श्रेणी' };
+    if (overallPercent >= 40) return { resultRemarkEnglish: 'Passed', resultRemarkHindi: 'उत्तीर्ण' };
+    return { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
+  };
+
   const handleMarkChange = (id, field, value) => {
     setResults(prev => prev.map(r => {
       if (r._id === id) {
         const updated = { ...r, [field]: parseFloat(value) || 0 };
         updated.marksTotal = (updated.iaMarks || 0) + (updated.meMarks || 0);
+        const preview = computeRemarkPreview(updated.iaMarks, updated.iaMaxMarks, updated.meMarks, updated.meMaxMarks);
+        updated.resultRemarkEnglish = preview.resultRemarkEnglish;
+        updated.resultRemarkHindi = preview.resultRemarkHindi;
         return updated;
       }
       return r;
@@ -297,22 +319,8 @@ const TeacherDashboard = () => {
                             />
                           </td>
                           <td className="p-2 border-r text-center font-bold text-blue-600 bg-blue-50/50">{r.marksTotal}</td>
-                          <td className="p-1 border-r bg-blue-50/20">
-                            <input 
-                              type="text" 
-                              value={r.resultRemarkEnglish || ''} 
-                              onChange={(e) => handleRemarkChange(r._id, 'resultRemarkEnglish', e.target.value)}
-                              className="w-full border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
-                            />
-                          </td>
-                          <td className="p-1 border-r bg-blue-50/20">
-                            <input 
-                              type="text" 
-                              value={r.resultRemarkHindi || ''} 
-                              onChange={(e) => handleRemarkChange(r._id, 'resultRemarkHindi', e.target.value)}
-                              className="w-full border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
-                            />
-                          </td>
+                          <td className="p-2 border-r text-gray-700 whitespace-nowrap">{r.resultRemarkEnglish || '—'}</td>
+                          <td className="p-2 border-r text-gray-700 whitespace-nowrap">{r.resultRemarkHindi || '—'}</td>
                           <td className="p-2 border-r text-center text-gray-400">{r.iaMaxMarks}</td>
                           <td className="p-2 border-r text-center text-gray-400">{r.meMaxMarks}</td>
                           <td className="p-2 border-r text-center text-gray-400 font-bold">{r.maxMarks}</td>
