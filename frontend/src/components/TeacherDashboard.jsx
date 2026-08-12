@@ -66,30 +66,48 @@ const TeacherDashboard = () => {
     finally { setLoading(false); }
   };
 
+  // Compute remark from marks — handles numeric values and 'AB' (absent)
   const computeRemarkPreview = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
-    const iaMax = iaMaxMarks || 0;
-    const meMax = meMaxMarks || 0;
-    const iaPercent = iaMax > 0 ? (iaMarks / iaMax) * 100 : 0;
-    const mePercent = meMax > 0 ? (meMarks / meMax) * 100 : 0;
+    const FAIL = { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
 
-    if (iaPercent < 40 || mePercent < 40) {
-      return { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
-    }
+    // Absent in either component = fail
+    if (iaMarks === 'AB' || meMarks === 'AB') return FAIL;
+    if (iaMarks === null || iaMarks === undefined || iaMarks === '') return FAIL;
+    if (meMarks === null || meMarks === undefined || meMarks === '') return FAIL;
+
+    const ia = parseFloat(iaMarks);
+    const me = parseFloat(meMarks);
+    const iaMax = parseFloat(iaMaxMarks) || 0;
+    const meMax = parseFloat(meMaxMarks) || 0;
+
+    if (isNaN(ia) || isNaN(me)) return FAIL;
+
+    const iaPercent = iaMax > 0 ? (ia / iaMax) * 100 : 0;
+    const mePercent = meMax > 0 ? (me / meMax) * 100 : 0;
+
+    // Below 40% in any component = fail
+    if (iaPercent < 40 || mePercent < 40) return FAIL;
+
     const totalMax = iaMax + meMax;
-    const overallPercent = totalMax > 0 ? ((iaMarks + meMarks) / totalMax) * 100 : 0;
+    const overallPercent = totalMax > 0 ? ((ia + me) / totalMax) * 100 : 0;
 
     if (overallPercent >= 75) return { resultRemarkEnglish: 'Passed, Distinction', resultRemarkHindi: 'उत्तीर्ण, विशिष्टता' };
     if (overallPercent >= 60) return { resultRemarkEnglish: 'Passed, First Division', resultRemarkHindi: 'उत्तीर्ण, प्रथम श्रेणी' };
     if (overallPercent >= 55) return { resultRemarkEnglish: 'Passed, Second Division', resultRemarkHindi: 'उत्तीर्ण, द्वितीय श्रेणी' };
     if (overallPercent >= 40) return { resultRemarkEnglish: 'Passed', resultRemarkHindi: 'उत्तीर्ण' };
-    return { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
+    return FAIL;
   };
 
   const handleMarkChange = (id, field, value) => {
     setResults(prev => prev.map(r => {
       if (r._id === id) {
-        const updated = { ...r, [field]: parseFloat(value) || 0 };
-        updated.marksTotal = (updated.iaMarks || 0) + (updated.meMarks || 0);
+        // Allow 'AB' string for absent, otherwise store as number
+        const markValue = value.toString().trim().toUpperCase() === 'AB' ? 'AB' : (parseFloat(value) || 0);
+        const updated = { ...r, [field]: markValue };
+        // Total: treat AB as 0 for display purposes
+        const ia = updated.iaMarks === 'AB' ? 0 : (parseFloat(updated.iaMarks) || 0);
+        const me = updated.meMarks === 'AB' ? 0 : (parseFloat(updated.meMarks) || 0);
+        updated.marksTotal = ia + me;
         const preview = computeRemarkPreview(updated.iaMarks, updated.iaMaxMarks, updated.meMarks, updated.meMaxMarks);
         updated.resultRemarkEnglish = preview.resultRemarkEnglish;
         updated.resultRemarkHindi = preview.resultRemarkHindi;
@@ -98,10 +116,7 @@ const TeacherDashboard = () => {
       return r;
     }));
   };
-
-  const handleRemarkChange = (id, field, value) => {
-    setResults(prev => prev.map(r => r._id === id ? { ...r, [field]: value } : r));
-  };
+  // Note: handleRemarkChange intentionally removed — remarks are auto-computed only
 
   const saveProgress = async () => {
     try {
@@ -112,12 +127,11 @@ const TeacherDashboard = () => {
           Authorization: `Bearer ${user.token}` 
         },
         body: JSON.stringify({
+          // Only send marks — backend recomputes remarks from marks
           results: results.map(r => ({
             resultId: r._id,
             iaMarks: r.iaMarks,
-            meMarks: r.meMarks,
-            resultRemarkEnglish: r.resultRemarkEnglish,
-            resultRemarkHindi: r.resultRemarkHindi
+            meMarks: r.meMarks
           }))
         })
       });
@@ -200,6 +214,7 @@ const TeacherDashboard = () => {
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Name</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Subject</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Students</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Date</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
                       </tr>
@@ -210,6 +225,9 @@ const TeacherDashboard = () => {
                           <td className="p-4 font-bold text-gray-800">{batch.batchName}</td>
                           <td className="p-4 text-gray-600">{batch.subject}</td>
                           <td className="p-4 text-gray-600">{batch.studentCount}</td>
+                          <td className="p-4 text-gray-500 text-sm">
+                            {batch.createdAt ? new Date(batch.createdAt).toLocaleDateString('en-IN') : '—'}
+                          </td>
                           <td className="p-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                               batch.status === 'disapproved' 
@@ -275,11 +293,11 @@ const TeacherDashboard = () => {
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Student (Hin)</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Eng)</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap text-center w-16">IA Marks</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center w-16">ME Marks</th>
-                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase text-center">Total</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-left min-w-[120px]">Remark (Eng)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-left min-w-[120px]">Remark (Hin)</th>
+                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase whitespace-nowrap text-center w-20">IA Marks ✏️</th>
+                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase text-center w-20">ME Marks ✏️</th>
+                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Total</th>
+                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Eng) 🤖</th>
+                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Hin) 🤖</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap text-center">IA Max</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">ME Max</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Max Marks</th>
@@ -302,25 +320,35 @@ const TeacherDashboard = () => {
                           <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.candidateNameHindi}</td>
                           <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameEnglish}</td>
                           <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameHindi}</td>
-                          <td className="p-1 border-r bg-blue-50/20">
+                          <td className="p-1 border-r bg-blue-50/30">
                             <input 
-                              type="number" 
+                              type="text"
                               value={r.iaMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'iaMarks', e.target.value)}
-                              className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                              placeholder="0 or AB"
+                              className="w-full text-center border-blue-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-semibold"
                             />
                           </td>
-                          <td className="p-1 border-r bg-blue-50/20">
+                          <td className="p-1 border-r bg-blue-50/30">
                             <input 
-                              type="number" 
+                              type="text"
                               value={r.meMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'meMarks', e.target.value)}
-                              className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                              placeholder="0 or AB"
+                              className="w-full text-center border-blue-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-semibold"
                             />
                           </td>
                           <td className="p-2 border-r text-center font-bold text-blue-600 bg-blue-50/50">{r.marksTotal}</td>
-                          <td className="p-2 border-r text-gray-700 whitespace-nowrap">{r.resultRemarkEnglish || '—'}</td>
-                          <td className="p-2 border-r text-gray-700 whitespace-nowrap">{r.resultRemarkHindi || '—'}</td>
+                          <td className="p-2 border-r bg-green-50/40 whitespace-nowrap">
+                            <span className={`text-xs font-semibold ${
+                              r.resultRemarkEnglish === 'E.R.' ? 'text-red-600' : 'text-green-700'
+                            }`}>{r.resultRemarkEnglish || '—'}</span>
+                          </td>
+                          <td className="p-2 border-r bg-green-50/40 whitespace-nowrap">
+                            <span className={`text-xs font-semibold ${
+                              r.resultRemarkHindi === 'अनुत्तीर्ण' ? 'text-red-600' : 'text-green-700'
+                            }`}>{r.resultRemarkHindi || '—'}</span>
+                          </td>
                           <td className="p-2 border-r text-center text-gray-400">{r.iaMaxMarks}</td>
                           <td className="p-2 border-r text-center text-gray-400">{r.meMaxMarks}</td>
                           <td className="p-2 border-r text-center text-gray-400 font-bold">{r.maxMarks}</td>

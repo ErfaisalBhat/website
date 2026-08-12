@@ -176,6 +176,12 @@ const resultSchema = new mongoose.Schema({
   issuedAt: {
     type: Date
   },
+  submittedAt: {
+    type: Date
+  },
+  approvedAt: {
+    type: Date
+  },
   teacherArchived: {
     type: Boolean,
     default: false

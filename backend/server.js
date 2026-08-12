@@ -1,5 +1,5 @@
-require('./jobs/cornJobs');
 require('dotenv').config();
+require('./jobs/cornJobs');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');

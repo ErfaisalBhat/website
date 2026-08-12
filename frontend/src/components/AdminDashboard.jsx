@@ -48,6 +48,7 @@ const AdminDashboard = () => {
   const [approvedBatches, setApprovedBatches] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [isRegisterOpen, setIsRegisterOpen] = useState(true);
   const [currentBatch, setCurrentBatch] = useState(null);
   const [previewData, setPreviewData] = useState(null);
   const [newTeacher, setNewTeacher] = useState({ name: '', email: '', password: '' });
@@ -118,11 +119,11 @@ const AdminDashboard = () => {
         if (selectedPhotoBatch) handleManagePhotos(selectedPhotoBatch);
         fetchStudents();
       } else {
-        toast.error(data.message || 'Upload failed');
+        toast.error(`${data.message || 'Upload failed'}${data.error ? ': ' + data.error : ''}`, { duration: 8000 });
       }
     } catch (err) {
       toast.dismiss(loadingToast);
-      toast.error('Photo upload failed');
+      toast.error('Photo upload failed: ' + err.message, { duration: 8000 });
     }
   };
 
@@ -470,7 +471,7 @@ const AdminDashboard = () => {
               <div className="bg-white p-8 rounded-2xl shadow-sm border">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Upload New Batch</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Upload Records</h2>
                     <p className="text-gray-500">Create a new student result batch by uploading a CSV or Excel file.</p>
                   </div>
                   <a 
@@ -509,7 +510,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
-                    Upload New Batch
+                    Upload Records
                   </button>
                 </form>
               </div>
@@ -541,8 +542,9 @@ const AdminDashboard = () => {
                           {draftBatches.map(batch => (
                             <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
                               <td className="p-4">
-                                <p className="font-bold text-gray-800">{batch.batchName}</p>
-                                <p className="text-xs text-gray-400">Created: {new Date(batch.createdAt).toLocaleDateString()}</p>
+                                <p className="font-bold text-gray-800 font-mono text-sm">
+                                  #{String(batch.batchSeq || 0).padStart(2, '0')}
+                                </p>
                               </td>
                               <td className="p-4 text-gray-600">{batch.subject}</td>
                               <td className="p-4 text-gray-600">{batch.studentCount}</td>
@@ -972,28 +974,7 @@ const AdminDashboard = () => {
 
             {activeTab === 'teachers' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1">
-                  <div className="bg-white p-6 rounded-2xl shadow-sm border sticky top-8">
-                    <h2 className="text-xl font-bold text-gray-800 mb-6">Register Teacher</h2>
-                    <form onSubmit={handleAddTeacher} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Full Name</label>
-                        <input type="text" placeholder="John Doe" value={newTeacher.name} onChange={(e) => setNewTeacher({...newTeacher, name: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Email Address</label>
-                        <input type="email" placeholder="john@example.com" value={newTeacher.email} onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Password</label>
-                        <input type="password" placeholder="••••••••" value={newTeacher.password} onChange={(e) => setNewTeacher({...newTeacher, password: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
-                      </div>
-                      <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md">Create Account</button>
-                    </form>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 lg:order-1">
                   <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
                     <table className="w-full text-left">
                       <thead className="bg-gray-50 border-b">
@@ -1025,6 +1006,35 @@ const AdminDashboard = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-1 lg:order-2">
+                  <div className="bg-white rounded-2xl shadow-sm border sticky top-8 overflow-hidden">
+                    <button
+                      onClick={() => setIsRegisterOpen(!isRegisterOpen)}
+                      className="w-full flex items-center justify-between p-6 text-left"
+                    >
+                      <h2 className="text-xl font-bold text-gray-800">Register Teacher</h2>
+                      <span className={`transform transition-transform duration-200 text-gray-400 ${isRegisterOpen ? 'rotate-180' : ''}`}>▼</span>
+                    </button>
+                    {isRegisterOpen && (
+                      <form onSubmit={handleAddTeacher} className="space-y-4 px-6 pb-6">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Full Name</label>
+                          <input type="text" placeholder="John Doe" value={newTeacher.name} onChange={(e) => setNewTeacher({...newTeacher, name: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Email Address</label>
+                          <input type="email" placeholder="john@example.com" value={newTeacher.email} onChange={(e) => setNewTeacher({...newTeacher, email: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 uppercase mb-1 ml-1">Password</label>
+                          <input type="password" placeholder="••••••••" value={newTeacher.password} onChange={(e) => setNewTeacher({...newTeacher, password: e.target.value})} className="w-full border-gray-100 bg-gray-50 border p-3 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all" required />
+                        </div>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md">Create Account</button>
+                      </form>
+                    )}
                   </div>
                 </div>
               </div>

@@ -24,6 +24,8 @@ const uploadStudents = async (req, res) => {
 
     const batchId = `BATCH-${Date.now()}`;
     const batchName = `${subject} - ${new Date().toISOString().split('T')[0]}`;
+    const distinctBatchIds = await Result.distinct('batchId');
+    const batchSeq = distinctBatchIds.length + 1;
 
     let parsedResults = [];
     try {
@@ -81,6 +83,7 @@ const uploadStudents = async (req, res) => {
         subject,
         batchId,
         batchName,
+        batchSeq,
         uploadedBy: req.user._id,
         status: 'draft'
       });
@@ -121,6 +124,9 @@ const getDraftBatches = async (req, res) => {
           subject: { $first: '$subject' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
+          batchSeq: { $first: '$batchSeq' },
+          submittedAt: { $first: '$submittedAt' },
+          approvedAt: { $first: '$approvedAt' },
           studentCount: { $sum: 1 }
         }
       },
@@ -152,6 +158,9 @@ const getPendingResults = async (req, res) => {
           subject: { $first: '$subject' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
+          batchSeq: { $first: '$batchSeq' },
+          submittedAt: { $first: '$submittedAt' },
+          approvedAt: { $first: '$approvedAt' },
           studentCount: { $sum: 1 }
         }
       },
@@ -183,6 +192,9 @@ const getApprovedBatches = async (req, res) => {
           subject: { $first: '$subject' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
+          batchSeq: { $first: '$batchSeq' },
+          submittedAt: { $first: '$submittedAt' },
+          approvedAt: { $first: '$approvedAt' },
           studentCount: { $sum: 1 }
         }
       },
@@ -236,7 +248,7 @@ const deleteApprovedBatch = async (req, res) => {
 const approveBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
-    await Result.updateMany({ batchId }, { status: 'approved' });
+    await Result.updateMany({ batchId }, { status: 'approved', approvedAt: new Date() });
     res.json({ message: 'Batch approved successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error approving batch', error: error.message });
@@ -391,14 +403,7 @@ const uploadStudentPhoto = async (req, res) => {
       return res.status(400).json({ message: 'No image uploaded' });
     }
 
-    // Configure Cloudinary
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
-    });
-
-    console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME);
+    console.log('Cloud Name (at upload time):', process.env.CLOUDINARY_CLOUD_NAME);
 
     // Convert buffer to base64
     const fileBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;

@@ -1,11 +1,17 @@
 // Computes the bilingual result remark from IA/ME marks and their max marks.
-// Rules:
-//  - Missing/absent marks (null or undefined) -> Fail (E.R.)
+// Rules (Item 7):
+//  - AB (Absent) in either component -> Fail (E.R.)
+//  - Missing/null/empty marks -> Fail (E.R.)
 //  - Either component below 40% -> Fail (E.R.)
-//  - Otherwise, overall percentage determines the pass tier.
+//  - Both above 40% -> overall percentage determines pass tier
 const computeRemark = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
   const FAIL = { english: 'E.R.', hindi: 'अनुत्तीर्ण' };
 
+  // Absent in either component = fail
+  const isAB = (v) => v !== null && v !== undefined && v.toString().trim().toUpperCase() === 'AB';
+  if (isAB(iaMarks) || isAB(meMarks)) return FAIL;
+
+  // Missing / empty marks = fail
   if (iaMarks === null || iaMarks === undefined || iaMarks === '' ||
       meMarks === null || meMarks === undefined || meMarks === '') {
     return FAIL;
@@ -21,6 +27,7 @@ const computeRemark = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
   const iaPercent = iaMax > 0 ? (ia / iaMax) * 100 : 0;
   const mePercent = meMax > 0 ? (me / meMax) * 100 : 0;
 
+  // Below 40% in any component = fail
   if (iaPercent < 40 || mePercent < 40) return FAIL;
 
   const totalMax = iaMax + meMax;
