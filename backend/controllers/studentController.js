@@ -12,11 +12,18 @@ const verifyStudent = async (req, res) => {
 
     console.log('Searching for student with:', { rollNo, dateOfBirth });
 
-    // Find student result with matching credentials
-    const studentResult = await Result.findOne({ rollNo: rollNo }).select("status rollNo enrolmentNo candidateNameEnglish dateOfBirth");
-
+    // Find student result with matching credentials, grabbing the most recent upload
+    const studentResult = await Result.findOne({ rollNo: rollNo })
+      .sort({ createdAt: -1 })
+      .select("status rollNo enrolmentNo candidateNameEnglish dateOfBirth");
 
     console.log('Raw student result:', studentResult); // Debug log
+
+    if (studentResult) {
+      console.log('DB value:', studentResult.dateOfBirth);
+      console.log('Received value:', req.body.dateOfBirth);
+      console.log('Types:', typeof studentResult.dateOfBirth, typeof req.body.dateOfBirth);
+    }
 
     if (!studentResult) {
       return res.status(401).json({ 
@@ -24,12 +31,57 @@ const verifyStudent = async (req, res) => {
       });
     }
 
+    // Check if DOB is completely missing in the database
+    if (!studentResult.dateOfBirth || studentResult.dateOfBirth.trim() === '') {
+      return res.status(401).json({ 
+        message: 'Date of birth is not registered in our system for this Roll Number. Please contact the administration to update your records.' 
+      });
+    }
+
+    // Helper to robustly standardize dates to YYYY-MM-DD
+    const standardizeDate = (d) => {
+      if (!d) return '';
+      const str = d.toString().trim();
+      
+      // Try YYYY-MM-DD or YYYY/MM/DD
+      let match = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+      if (match) {
+        return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      }
+
+      // Try DD-MM-YYYY or DD/MM/YYYY (This handles the frontend's explicit formatting)
+      match = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+      if (match) {
+        return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
+      }
+
+      // Try MM-DD-YYYY or MM/DD/YYYY (US format fallback)
+      match = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+      if (match) {
+        // Assume first digits might be month if greater than 12
+         return `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+      }
+
+      // Fallback to JS Date parsing
+      const dt = new Date(str);
+      if (!isNaN(dt.getTime())) {
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+      }
+      
+      return str;
+    };
+
+    const stdInputDate = standardizeDate(dateOfBirth);
+    const stdStoredDate = standardizeDate(studentResult.dateOfBirth);
+
     console.log('Comparing dates:', {
       input: dateOfBirth,
-      stored: studentResult.dateOfBirth
+      stored: studentResult.dateOfBirth,
+      stdInput: stdInputDate,
+      stdStored: stdStoredDate
     });
 
-    if (dateOfBirth !== studentResult.dateOfBirth) {
+    if (stdInputDate !== stdStoredDate && dateOfBirth !== studentResult.dateOfBirth) {
       return res.status(401).json({ 
         message: 'Invalid date of birth' 
       });
@@ -76,18 +128,7 @@ const getStudentResults = async (req, res) => {
       rollNo,
       enrolmentNo,
       status: 'approved'
-    }).select(`
-      subject batchName
-      iaMarks meMarks marksTotal
-      maxMarks iaMaxMarks meMaxMarks
-      iaSubCode meSubCode
-      resultRemarkEnglish
-      dateOfResultEnglish
-      candidateNameEnglish fatherNameEnglish
-      courseNameEnglish courseYearEnglish
-      certificateURL
-      certificateNo issuedAt
-    `);
+    }).populate('student', 'profileImageId');
 
     if (!results.length) {
       return res.status(404).json({ message: 'No approved results found' });
@@ -118,7 +159,7 @@ const generateCertificate = async (req, res) => {
       rollNo,
       enrolmentNo,
       status: 'approved'
-    });
+    }).populate('student', 'profileImageId');
 
     if (!result) {
       return res.status(404).json({ message: 'Result not found' });
@@ -160,7 +201,8 @@ const generateCertificate = async (req, res) => {
       dateOfResultHindi: result.dateOfResultHindi,
       dateOfResultEnglish: result.dateOfResultEnglish,
       certificateNo: result.certificateNo,
-      issuedAt: result.issuedAt
+      issuedAt: result.issuedAt,
+      profileImageId: result.student?.profileImageId
     };
 
     res.json(certificateData);
@@ -181,7 +223,7 @@ const verifyCertificate = async (req, res) => {
     const result = await Result.findOne({ 
       certificateNo,
       status: 'approved' 
-    });
+    }).populate('student', 'profileImageId');
 
     if (!result) {
       return res.status(404).json({ message: 'Invalid certificate number' });
@@ -194,7 +236,8 @@ const verifyCertificate = async (req, res) => {
       subject: result.subject,
       courseName: result.courseNameEnglish,
       issuedAt: result.issuedAt,
-      status: 'Verified'
+      status: 'Verified',
+      profileImageId: result.student?.profileImageId
     });
   } catch (error) {
     console.error('Verification error:', error);

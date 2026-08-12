@@ -6,8 +6,9 @@ const tryParseDate = (dateVal) => {
   
   // Handle Excel Serial Dates (numbers)
   if (typeof dateVal === 'number') {
-    // Excel date epoch is 1899-12-30
+    // Excel date epoch is 1899-12-30. Using UTC math to avoid timezone shifts.
     const date = new Date(Math.round((dateVal - 25569) * 864e5));
+    // Important: we just get the UTC parts to avoid local timezone off-by-one errors.
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
@@ -15,10 +16,10 @@ const tryParseDate = (dateVal) => {
   }
 
   if (dateVal instanceof Date) {
-    // Use local components to avoid timezone shift from toISOString()
-    const year = dateVal.getFullYear();
-    const month = String(dateVal.getMonth() + 1).padStart(2, '0');
-    const day = String(dateVal.getDate()).padStart(2, '0');
+    // Treat the date as UTC to extract the exact year/month/day without local shift
+    const year = dateVal.getUTCFullYear();
+    const month = String(dateVal.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(dateVal.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
@@ -74,7 +75,9 @@ const processCSV = (buffer) => {
 };
 
 const processExcel = (buffer) => {
-  const workbook = xlsx.read(buffer, { cellDates: true });
+  // Removed cellDates: true to prevent xlsx from shifting dates backwards via local timezones.
+  // We want the raw serial numbers so our custom UTC math can parse them accurately.
+  const workbook = xlsx.read(buffer);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 

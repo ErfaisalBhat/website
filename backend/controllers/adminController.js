@@ -3,6 +3,15 @@ const Result = require('../models/Result');
 const FileUpload = require('../models/FileUpload');
 const { processCSV, processExcel } = require('../utils/fileParser');
 const mongoose = require('mongoose');
+const cloudinary = require('cloudinary').v2;
+const { Readable } = require('stream');
+
+// Cloudinary Configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // Admin uploads student data -> Creates "draft" results
 const uploadStudents = async (req, res) => {
@@ -163,6 +172,67 @@ const getPendingResults = async (req, res) => {
   }
 };
 
+const getApprovedBatches = async (req, res) => {
+  try {
+    const batches = await Result.aggregate([
+      { $match: { status: 'approved' } },
+      {
+        $group: {
+          _id: '$batchId',
+          batchName: { $first: '$batchName' },
+          subject: { $first: '$subject' },
+          uploadedBy: { $first: '$uploadedBy' },
+          createdAt: { $first: '$createdAt' },
+          studentCount: { $sum: 1 }
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'uploadedBy',
+          foreignField: '_id',
+          as: 'teacher'
+        }
+      },
+      { $unwind: '$teacher' },
+      { $sort: { createdAt: -1 } }
+    ]);
+    res.json(batches);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching approved batches', error: error.message });
+  }
+};
+
+const deleteApprovedBatch = async (req, res) => {
+  try {
+    const { batchId } = req.params;
+    
+    // Find all results in this batch to get student IDs
+    const results = await Result.find({ batchId, status: 'approved' });
+    const studentIds = results.map(r => r.student);
+
+    // Delete all results in this batch first
+    await Result.deleteMany({ batchId, status: 'approved' });
+    
+    // Delete the associated file upload
+    await FileUpload.deleteOne({ batchId });
+
+    // For each student, check if they have any OTHER results. If not, delete the student.
+    if (studentIds.length > 0) {
+      for (const sId of studentIds) {
+        const remainingResults = await Result.countDocuments({ student: sId });
+        if (remainingResults === 0) {
+          await User.findByIdAndDelete(sId);
+        }
+      }
+    }
+
+    res.json({ message: 'Approved batch and orphaned student records deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting approved batch', error: error.message });
+  }
+};
+
 const approveBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
@@ -192,10 +262,26 @@ const getTeachers = async (req, res) => {
   }
 };
 
+const getStudents = async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student' })
+                               .select('name email rollNo profileImageId')
+                               .collation({ locale: "en_US", numericOrdering: true })
+                               .sort({ rollNo: 1, name: 1 });
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching students', error: error.message });
+  }
+};
+
 const getPendingBatchPreview = async (req, res) => {
   try {
     const { batchId } = req.params;
-    const results = await Result.find({ batchId }).populate('student', 'name email');
+    // Added collation for numeric sorting of roll numbers
+    const results = await Result.find({ batchId })
+                                .populate('student', 'name email profileImageId')
+                                .collation({ locale: "en_US", numericOrdering: true })
+                                .sort({ rollNo: 1 });
     res.json({ results });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching preview', error: error.message });
@@ -294,6 +380,69 @@ const updateBatchResults = async (req, res) => {
   }
 };
 
+const uploadStudentPhoto = async (req, res) => {
+  console.log('--- PHOTO UPLOAD START ---');
+  try {
+    const { studentId } = req.params;
+    console.log('Target Student ID:', studentId);
+    
+    if (!req.file) {
+      console.log('Error: No file in request');
+      return res.status(400).json({ message: 'No image uploaded' });
+    }
+
+    // Configure Cloudinary
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+
+    console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME);
+
+    // Convert buffer to base64
+    const fileBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    
+    console.log('Attempting Cloudinary upload...');
+    
+    const result = await cloudinary.uploader.upload(fileBase64, {
+      folder: 'student_photos',
+      public_id: `student_${studentId}`,
+      overwrite: true,
+      transformation: [
+        { width: 400, height: 500, crop: 'fill', gravity: 'face' }
+      ]
+    });
+
+    console.log('Cloudinary Result URL:', result.secure_url);
+    
+    // Store the secure URL in the database
+    const updatedUser = await User.findByIdAndUpdate(
+      studentId, 
+      { profileImageId: result.secure_url },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      console.log('Error: Student not found in DB');
+      return res.status(404).json({ message: 'Student not found in database' });
+    }
+
+    console.log('Database updated successfully');
+    res.json({ 
+      message: 'Photo uploaded and linked successfully', 
+      imageUrl: result.secure_url 
+    });
+  } catch (error) {
+    console.error('CRITICAL UPLOAD ERROR:', error);
+    res.status(500).json({ 
+      message: 'Photo Upload Failed', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 module.exports = {
   uploadStudents,
   assignBatch,
@@ -302,10 +451,14 @@ module.exports = {
   approveBatch,
   disapproveBatch,
   getTeachers,
+  getStudents,
+  getApprovedBatches,
   getPendingBatchPreview,
   addTeacher,
   removeTeacher,
   changeTeacherPassword,
   deleteDraftBatch,
-  updateBatchResults
+  deleteApprovedBatch,
+  updateBatchResults,
+  uploadStudentPhoto
 };

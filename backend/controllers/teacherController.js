@@ -31,10 +31,14 @@ const getAssignedBatches = async (req, res) => {
 const getBatchResults = async (req, res) => {
   try {
     const { batchId } = req.params;
-    const results = await Result.find({ batchId, uploadedBy: req.user._id }).populate('student', 'name email');
+    // Sort results by rollNo naturally (numerically)
+    const results = await Result.find({ batchId, uploadedBy: req.user._id })
+                                .populate('student', 'name email')
+                                .collation({ locale: "en_US", numericOrdering: true })
+                                .sort({ rollNo: 1 });
     res.json({ results });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching batch results', error: error.message });
+    res.status(500).json({ message: 'Error fetching results', error: error.message });
   }
 };
 
