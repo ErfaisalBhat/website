@@ -293,11 +293,11 @@ const TeacherDashboard = () => {
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Student (Hin)</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Eng)</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase whitespace-nowrap text-center w-20">IA Marks ✏️</th>
-                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase text-center w-20">ME Marks ✏️</th>
+                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase whitespace-nowrap text-center w-20">IA Marks </th>
+                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase text-center w-20">ME Marks </th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Total</th>
-                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Eng) 🤖</th>
-                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Hin) 🤖</th>
+                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Eng) </th>
+                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Hin) </th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap text-center">IA Max</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">ME Max</th>
                         <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Max Marks</th>
