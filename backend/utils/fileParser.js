@@ -44,53 +44,34 @@ const tryParseDate = (dateVal) => {
   return dateStr;
 };
 
-const isHeaderRow = (row) => {
-  if (!row || !Array.isArray(row)) return false;
-  const combined = row.join(' ').toLowerCase();
-  return combined.includes('roll') || combined.includes('enrolment') || combined.includes('name');
-};
+
 
 const processCSV = (buffer) => {
   return new Promise((resolve, reject) => {
     csv.parse(buffer, { columns: false, trim: true }, (err, data) => {
       if (err) return reject(err);
-      
-      let dataStartIndex = 0;
-      for (let i = 0; i < Math.min(data.length, 15); i++) {
-        if (isHeaderRow(data[i])) {
-          dataStartIndex = i + 1;
-        } else if (data[i][2]) {
-           // If we find something that looks like a roll no and not a header, stop
-           break;
-        }
-      }
 
-      const results = data.slice(dataStartIndex)
+      // Always skip first 2 rows:
+      // Row 0 = institution title / metadata
+      // Row 1 = column headers (FIELD1, FIELD2... or Roll No, Name, etc.)
+      const results = data.slice(2)
         .filter(row => row && row[2] && row[2].toString().trim() !== '')
         .map(row => mapRowToResult(row));
-      
+
       resolve(results.filter(r => r.rollNo.trim() !== '' && r.enrolmentNo.trim() !== '' && r.candidateNameEnglish.trim() !== ''));
     });
   });
 };
 
 const processExcel = (buffer) => {
-  // Removed cellDates: true to prevent xlsx from shifting dates backwards via local timezones.
-  // We want the raw serial numbers so our custom UTC math can parse them accurately.
   const workbook = xlsx.read(buffer);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
-  let dataStartIndex = 0;
-  for (let i = 0; i < Math.min(data.length, 15); i++) {
-    if (isHeaderRow(data[i])) {
-      dataStartIndex = i + 1;
-    } else if (data[i][2]) {
-      break;
-    }
-  }
-
-  const results = data.slice(dataStartIndex)
+  // Always skip first 2 rows:
+  // Row 0 = institution title / metadata
+  // Row 1 = column headers
+  const results = data.slice(2)
     .filter(row => row && row[2] && row[2].toString().trim() !== '')
     .map(row => mapRowToResult(row));
 

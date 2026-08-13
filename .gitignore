@@ -1,2 +1,4 @@
 backend/uploads/credentials.json
-backend/uploads/credentials.json
+**/node_modules/
+dist/
+.env

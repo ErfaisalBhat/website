@@ -33,7 +33,7 @@ const StudentDashboard = () => {
     filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: {
-      scale: 2,
+      scale: 4,
       useCORS: true,
       letterRendering: true,
       allowTaint: true,

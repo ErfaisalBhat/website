@@ -775,6 +775,13 @@ const AdminDashboard = () => {
                               <td className="p-4">
                                 <div className="flex justify-end gap-2 items-center">
                                   <button 
+                                    onClick={() => fetchPreview(batch._id)}
+                                    className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Preview Results"
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </button>
+                                  <button 
                                     onClick={() => handleManagePhotos(batch)}
                                     className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
                                     title="Manage Photographs"
