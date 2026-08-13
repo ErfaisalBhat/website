@@ -1,31 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import StudentHeader from './StudentHeader';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const VerifyCertificate = () => {
-  const [certNo, setCertNo] = useState('');
+  const [searchParams] = useSearchParams();
+  const [certNo, setCertNo] = useState(searchParams.get('certNo') || '');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
 
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!certNo.trim()) return;
-
+  const verifyCertificate = async (certificateNumber) => {
+    if (!certificateNumber.trim()) return;
     setLoading(true);
     setError('');
     setResult(null);
-
     try {
-      const response = await axios.get(`${API_URL}/api/student/verify/${certNo.trim()}`);
+      const response = await axios.get(`${API_URL}/api/student/verify/${certificateNumber.trim()}`);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Certificate not found or invalid');
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    const urlCertNo = searchParams.get('certNo');
+    if (urlCertNo) {
+      setCertNo(urlCertNo);
+      verifyCertificate(urlCertNo);
+    }
+  }, [searchParams]);
+
+  const handleVerify = (e) => {
+    e.preventDefault();
+    verifyCertificate(certNo);
   };
 
   return (

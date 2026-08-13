@@ -17,7 +17,8 @@ const CertificateTemplate = ({ certificateData }) => {
     ? (profileImageId.startsWith('http') ? profileImageId : `${API_URL}/uploads/${profileImageId}`)
     : null;
 
-  const qrData = `${rollNo || ''}-${enrolmentNo || ''}`;
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
+  const qrData = certificateNo ? `${currentOrigin}/verify?certNo=${certificateNo}` : `${currentOrigin}/verify`;
 
   const kokila = { fontFamily: "'Kokila','Noto Sans Devanagari',serif" };
   const arya   = { fontFamily: "'Arya','Noto Sans Devanagari',sans-serif", fontWeight: 'bold' };
