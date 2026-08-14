@@ -539,11 +539,11 @@ const AdminDashboard = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {draftBatches.map(batch => (
+                          {draftBatches.map((batch, index) => (
                             <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
                               <td className="p-4">
                                 <p className="font-bold text-gray-800 font-mono text-sm">
-                                  #{String(batch.batchSeq || 0).padStart(2, '0')}
+                                  #{String(batch.batchSeq || (index + 1)).padStart(2, '0')}
                                 </p>
                               </td>
                               <td className="p-4 text-gray-600">{batch.subject}</td>
@@ -908,7 +908,7 @@ const AdminDashboard = () => {
                     <thead className="bg-gray-50 border-b">
                       <tr>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase">Student</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Contact / Roll No</th>
+                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Roll No</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Status</th>
                         <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
                       </tr>
@@ -941,8 +941,7 @@ const AdminDashboard = () => {
                             </div>
                           </td>
                           <td className="p-4">
-                            <p className="text-sm font-medium text-gray-700">{student.email}</p>
-                            <p className="text-xs text-gray-400">Roll No: {student.rollNo || 'Not Assigned'}</p>
+                            <p className="text-sm font-medium text-gray-700">{student.rollNo || 'Not Assigned'}</p>
                           </td>
                           <td className="p-4 text-center">
                             {student.profileImageId ? (

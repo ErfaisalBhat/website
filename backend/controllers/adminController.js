@@ -66,7 +66,8 @@ const uploadStudents = async (req, res) => {
             email: data.email,
             password,
             role: 'student',
-            dateOfBirth: data.dateOfBirth
+            dateOfBirth: data.dateOfBirth,
+            rollNo: data.rollNo || data.email.split('@')[0]
           });
         } catch (createErr) {
           if (createErr.code === 11000) {
@@ -75,6 +76,11 @@ const uploadStudents = async (req, res) => {
             throw createErr;
           }
         }
+      }
+
+      if (student && !student.rollNo) {
+        student.rollNo = data.rollNo || data.email.split('@')[0];
+        await student.save();
       }
 
       resultsToInsert.push({
@@ -248,6 +254,15 @@ const deleteApprovedBatch = async (req, res) => {
 const approveBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
+    
+    // Check if all students in the batch have photos uploaded
+    const results = await Result.find({ batchId }).populate('student');
+    const missingPhotos = results.filter(r => !r.student || !r.student.profileImageId);
+    
+    if (missingPhotos.length > 0) {
+      return res.status(400).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
+    }
+
     await Result.updateMany({ batchId }, { status: 'approved', approvedAt: new Date() });
     res.json({ message: 'Batch approved successfully' });
   } catch (error) {
@@ -280,7 +295,16 @@ const getStudents = async (req, res) => {
                                .select('name email rollNo profileImageId')
                                .collation({ locale: "en_US", numericOrdering: true })
                                .sort({ rollNo: 1, name: 1 });
-    res.json(students);
+                               
+    const formattedStudents = students.map(s => ({
+      _id: s._id,
+      name: s.name,
+      email: s.email,
+      rollNo: s.rollNo || s.email.split('@')[0],
+      profileImageId: s.profileImageId
+    }));
+                               
+    res.json(formattedStudents);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching students', error: error.message });
   }

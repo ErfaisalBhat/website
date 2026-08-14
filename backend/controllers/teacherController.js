@@ -1,14 +1,13 @@
 const Result = require('../models/Result');
 const { computeRemark } = require('../utils/remarkCalculator');
 
-// Get batches assigned to teacher with status "draft" or "disapproved"
+// Get all batches assigned to teacher
 const getAssignedBatches = async (req, res) => {
   try {
     const batches = await Result.aggregate([
       { 
         $match: { 
-          uploadedBy: req.user._id, 
-          status: { $in: ['draft', 'disapproved'] } 
+          uploadedBy: req.user._id 
         } 
       },
       {

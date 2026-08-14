@@ -4,6 +4,7 @@ import Header from './Header';
 import toast from 'react-hot-toast';
 import { 
   ClipboardDocumentListIcon,
+  DocumentCheckIcon,
   ArrowLeftOnRectangleIcon,
   Bars3Icon,
   XMarkIcon
@@ -14,16 +15,16 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const SidebarItem = ({ icon: Icon, label, active, onClick, count }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+    className={`w-full flex items-center gap-3 px-4 py-3 border-l-4 transition-all duration-200 ${
       active 
-        ? 'bg-blue-600 text-white shadow-md' 
-        : 'text-gray-600 hover:bg-blue-50 hover:text-blue-600'
+        ? 'border-red-700 bg-neutral-800 text-white' 
+        : 'border-transparent text-gray-400 hover:bg-neutral-800 hover:text-gray-100'
     }`}
   >
     <Icon className="w-5 h-5" />
-    <span className="font-medium flex-1 text-left">{label}</span>
+    <span className="font-semibold tracking-wide text-sm flex-1 text-left uppercase">{label}</span>
     {count > 0 && (
-      <span className={`text-xs px-2 py-0.5 rounded-full ${active ? 'bg-white text-blue-600' : 'bg-blue-100 text-blue-600'}`}>
+      <span className={`text-[10px] px-2 py-0.5 font-bold ${active ? 'bg-red-700 text-white' : 'bg-neutral-700 text-gray-300'}`}>
         {count}
       </span>
     )}
@@ -116,7 +117,6 @@ const TeacherDashboard = () => {
       return r;
     }));
   };
-  // Note: handleRemarkChange intentionally removed — remarks are auto-computed only
 
   const saveProgress = async () => {
     try {
@@ -136,9 +136,9 @@ const TeacherDashboard = () => {
         })
       });
       const data = await res.json();
-      if (res.ok) toast.success(data.message || 'Progress saved successfully');
-      else toast.error(data.message);
-    } catch (err) { toast.error('Save failed'); }
+      if (res.ok) toast.success(data.message || 'Progress saved successfully', { style: { borderRadius: 0, background: '#171717', color: '#fff' } });
+      else toast.error(data.message, { style: { borderRadius: 0, background: '#b91c1c', color: '#fff' } });
+    } catch (err) { toast.error('Save failed', { style: { borderRadius: 0, background: '#b91c1c', color: '#fff' } }); }
   };
 
   const submitForApproval = async () => {
@@ -150,109 +150,137 @@ const TeacherDashboard = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success(data.message || 'Batch submitted for approval');
+        toast.success(data.message || 'Batch submitted for approval', { style: { borderRadius: 0, background: '#171717', color: '#fff' } });
         setSelectedBatch(null);
         fetchAssignedBatches();
-      } else toast.error(data.message);
-    } catch (err) { toast.error('Submission failed'); }
+      } else toast.error(data.message, { style: { borderRadius: 0, background: '#b91c1c', color: '#fff' } });
+    } catch (err) { toast.error('Submission failed', { style: { borderRadius: 0, background: '#b91c1c', color: '#fff' } }); }
   };
 
+  const activeBatches = batches.filter(b => b.status !== 'approved');
+  const approvedBatches = batches.filter(b => b.status === 'approved');
+  const displayBatches = activeTab === 'batches' ? activeBatches : approvedBatches;
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar */}
       <aside 
         className={`${
-          isSidebarOpen ? 'w-72' : 'w-20'
-        } bg-white border-r transition-all duration-300 flex flex-col z-40`}
+          isSidebarOpen ? 'w-64' : 'w-20'
+        } bg-neutral-900 text-white transition-all duration-300 flex flex-col z-40 border-r border-neutral-800`}
       >
-        <div className="p-6 flex items-center justify-between">
-          {isSidebarOpen && <h1 className="text-xl font-bold text-blue-600">Teacher Panel</h1>}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 rounded-lg hover:bg-gray-100">
+        <div className="p-6 flex items-center justify-between border-b border-neutral-800">
+          {isSidebarOpen && <h1 className="text-lg font-black tracking-widest uppercase text-white">
+            <span className="text-red-600 mr-1">Faculty</span> Portal
+          </h1>}
+          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 text-neutral-400 hover:text-white transition-colors">
             {isSidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="flex-1 space-y-1 mt-6">
           <SidebarItem 
             icon={ClipboardDocumentListIcon} 
             label={isSidebarOpen ? "Assigned Batches" : ""} 
             active={activeTab === 'batches'} 
             onClick={() => setActiveTab('batches')} 
-            count={batches.length}
+            count={activeBatches.length}
+          />
+          <SidebarItem 
+            icon={DocumentCheckIcon} 
+            label={isSidebarOpen ? "Approved Records" : ""} 
+            active={activeTab === 'approved'} 
+            onClick={() => setActiveTab('approved')} 
+            count={approvedBatches.length}
           />
         </nav>
 
-        <div className="p-4 border-t">
+        <div className="p-4 border-t border-neutral-800">
           <button 
             onClick={logout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors ${!isSidebarOpen && 'justify-center'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-neutral-800 transition-colors ${!isSidebarOpen && 'justify-center'}`}
           >
             <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            {isSidebarOpen && <span className="font-medium">Logout</span>}
+            {isSidebarOpen && <span className="font-semibold text-sm uppercase tracking-wider">Logout</span>}
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0 bg-neutral-50">
         <Header />
-        <div className="flex-1 overflow-auto p-8">
+        <div className="flex-1 overflow-auto p-10">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'batches' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-800">Assigned Mark Entry</h2>
-                  <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">
-                    {batches.length} Batches
+            {(activeTab === 'batches' || activeTab === 'approved') && (
+              <div className="space-y-8 animate-in fade-in duration-300">
+                <div className="flex justify-between items-end mb-8 border-b-2 border-black pb-4">
+                  <div>
+                    <h2 className="text-3xl font-black text-black tracking-tight uppercase">
+                      {activeTab === 'batches' ? 'Assigned Mark Entry' : 'Approved Records'}
+                    </h2>
+                    <p className="text-neutral-500 font-medium mt-1 tracking-wide text-sm">
+                      {activeTab === 'batches' 
+                        ? 'Manage and evaluate your designated course batches.' 
+                        : 'View finalized mark entries that have been approved.'}
+                    </p>
+                  </div>
+                  <span className="bg-black text-white px-4 py-1.5 text-xs font-bold uppercase tracking-wider">
+                    {displayBatches.length} Batches
                   </span>
                 </div>
                 
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
-                  <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b">
+                <div className="bg-white border border-neutral-300 shadow-sm">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-neutral-100 border-b-2 border-neutral-300">
                       <tr>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Batch Name</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Subject</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Students</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Date</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Status</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Action</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Batch Name</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Subject</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200 text-center">Students</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Assigned Date</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200 text-center">Status</th>
+                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
-                      {batches.map(batch => (
-                        <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-4 font-bold text-gray-800">{batch.batchName}</td>
-                          <td className="p-4 text-gray-600">{batch.subject}</td>
-                          <td className="p-4 text-gray-600">{batch.studentCount}</td>
-                          <td className="p-4 text-gray-500 text-sm">
+                    <tbody className="divide-y divide-neutral-200">
+                      {displayBatches.map(batch => (
+                        <tr key={batch._id} className="hover:bg-neutral-50 transition-colors">
+                          <td className="p-4 font-bold text-neutral-900 border-r border-neutral-200">{batch.batchName}</td>
+                          <td className="p-4 text-neutral-700 font-medium border-r border-neutral-200">{batch.subject}</td>
+                          <td className="p-4 text-neutral-600 text-center font-mono border-r border-neutral-200">{batch.studentCount}</td>
+                          <td className="p-4 text-neutral-500 text-sm font-mono border-r border-neutral-200">
                             {batch.createdAt ? new Date(batch.createdAt).toLocaleDateString('en-IN') : '—'}
                           </td>
-                          <td className="p-4">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                          <td className="p-4 text-center border-r border-neutral-200">
+                            <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest border ${
                               batch.status === 'disapproved' 
-                                ? 'bg-red-100 text-red-600' 
+                                ? 'bg-red-50 text-red-700 border-red-200' 
                                 : batch.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-600'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : batch.status === 'approved'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-neutral-100 text-neutral-600 border-neutral-300'
                             }`}>
                               {batch.status}
                             </span>
                           </td>
-                          <td className="p-4">
+                          <td className="p-4 text-right">
                             <button 
                               onClick={() => fetchBatchResults(batch._id)} 
-                              className="text-blue-600 font-bold hover:text-blue-800 transition-colors"
+                              className={`text-xs font-bold border px-4 py-1.5 uppercase tracking-wider transition-colors inline-block ${
+                                activeTab === 'approved' 
+                                  ? 'text-neutral-700 border-neutral-700 hover:bg-neutral-700 hover:text-white' 
+                                  : 'text-red-700 border-red-700 hover:bg-red-700 hover:text-white'
+                              }`}
                             >
-                              Enter Marks
+                              {activeTab === 'approved' ? 'View Records' : 'Enter Marks'}
                             </button>
                           </td>
                         </tr>
                       ))}
-                      {batches.length === 0 && (
+                      {displayBatches.length === 0 && (
                         <tr>
-                          <td colSpan="5" className="p-12 text-center text-gray-400">
-                            No assigned batches found
+                          <td colSpan="6" className="p-16 text-center text-neutral-400 font-medium tracking-wide">
+                            No {activeTab === 'batches' ? 'assigned' : 'approved'} batches found.
                           </td>
                         </tr>
                       )}
@@ -266,103 +294,121 @@ const TeacherDashboard = () => {
 
         {/* Mark Entry Modal */}
         {selectedBatch && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-3xl w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
-              <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 z-50">
+            <div className="bg-white w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl rounded-none border border-neutral-800 animate-in zoom-in duration-200">
+              <div className="p-6 border-b-4 border-red-700 flex justify-between items-center bg-neutral-900 text-white">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800">Mark Entry</h3>
-                  <p className="text-sm text-gray-500">{batches.find(b => b._id === selectedBatch)?.batchName}</p>
+                  <h3 className="text-2xl font-black uppercase tracking-widest text-white">Mark Entry System</h3>
+                  <p className="text-sm text-neutral-400 mt-1 font-mono">{batches.find(b => b._id === selectedBatch)?.batchName}</p>
                 </div>
-                <div className="flex gap-3">
-                  <button onClick={saveProgress} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all">Save Progress</button>
-                  <button onClick={submitForApproval} className="bg-green-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-100 transition-all">Submit for Approval</button>
-                  <button onClick={() => setSelectedBatch(null)} className="bg-white border text-gray-600 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-50 transition-all">Close</button>
+                <div className="flex gap-4">
+                  {activeTab !== 'approved' && (
+                    <>
+                      <button onClick={saveProgress} className="bg-neutral-800 text-white border border-neutral-600 px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-neutral-700 transition-colors">Save Progress</button>
+                      <button onClick={submitForApproval} className="bg-red-700 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-colors">Submit for Approval</button>
+                    </>
+                  )}
+                  <button onClick={() => setSelectedBatch(null)} className="text-neutral-400 hover:text-white px-3 py-2 transition-colors">
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
                 </div>
               </div>
               
-              <div className="flex-1 overflow-auto p-6">
-                <div className="inline-block min-w-full align-middle border rounded-xl overflow-hidden shadow-sm">
-                  <table className="min-w-full text-[10px] border-separate border-spacing-0">
-                    <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
+              <div className="flex-1 overflow-auto bg-white border-t border-neutral-300 relative">
+                  <table className="min-w-full text-[11px] border-collapse">
+                    <thead className="bg-neutral-200 sticky top-0 z-20 shadow-sm border-b border-neutral-300">
                       <tr>
-                        <th className="p-2 border-b border-r bg-gray-50 sticky left-0 z-30 font-bold text-gray-500 uppercase whitespace-nowrap">Roll No</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">S.No</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Enrolment</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Student (Eng)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Student (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Eng)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase whitespace-nowrap text-center w-20">IA Marks </th>
-                        <th className="p-2 border-b border-r font-bold text-blue-600 uppercase text-center w-20">ME Marks </th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Total</th>
-                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Eng) </th>
-                        <th className="p-2 border-b border-r font-bold text-green-600 uppercase text-left min-w-[130px]">Remark (Hin) </th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap text-center">IA Max</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">ME Max</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase text-center">Max Marks</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Course (Eng)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Course (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Year (Eng)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Year (Hin)</th>
-                        <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Sub Code</th>
-                        <th className="p-2 border-b font-bold text-gray-500 uppercase whitespace-nowrap">Academic Yr</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 bg-neutral-200 sticky left-0 z-30 font-bold text-neutral-800 uppercase tracking-wider whitespace-nowrap">Roll No</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">S.No</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Enrolment</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">DOB</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider whitespace-nowrap">Student (Eng)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Student (Hin)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Eng)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Hin)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-red-700 uppercase tracking-wider whitespace-nowrap text-center w-24">IA Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-red-700 uppercase tracking-wider text-center w-24">ME Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-center">Total</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Eng)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Hin)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap text-center">IA Max</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider text-center">ME Max</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider text-center">Max Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Course (Eng)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Course (Hin)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Year (Eng)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Year (Hin)</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Sub Code</th>
+                        <th className="p-3 border-b-2 border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Academic Yr</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="divide-y divide-neutral-200">
                       {results.map(r => (
-                        <tr key={r._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-2 border-r bg-white sticky left-0 z-10 font-mono font-bold text-blue-600 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{r.rollNo}</td>
-                          <td className="p-2 border-r text-gray-400 text-center">{r.sNo}</td>
-                          <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.enrolmentNo}</td>
-                          <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.dateOfBirth}</td>
-                          <td className="p-2 border-r font-medium text-gray-800 whitespace-nowrap">{r.candidateNameEnglish}</td>
-                          <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.candidateNameHindi}</td>
-                          <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameEnglish}</td>
-                          <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameHindi}</td>
-                          <td className="p-1 border-r bg-blue-50/30">
+                        <tr key={r._id} className="hover:bg-neutral-50 transition-colors group">
+                          <td className="p-3 border-r border-neutral-200 bg-white group-hover:bg-neutral-50 sticky left-0 z-10 font-mono font-bold text-neutral-900 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.02)]">{r.rollNo}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 font-mono text-center">{r.sNo}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-600 font-mono whitespace-nowrap">{r.enrolmentNo}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 font-mono whitespace-nowrap">{r.dateOfBirth}</td>
+                          <td className="p-3 border-r border-neutral-200 font-bold text-neutral-900 whitespace-nowrap">{r.candidateNameEnglish}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-600 whitespace-nowrap">{r.candidateNameHindi}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-600 whitespace-nowrap">{r.fatherNameEnglish}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-600 whitespace-nowrap">{r.fatherNameHindi}</td>
+                          <td className="p-1 border-r border-neutral-200 bg-neutral-50/50">
                             <input 
                               type="text"
                               value={r.iaMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'iaMarks', e.target.value)}
-                              placeholder="0 or AB"
-                              className="w-full text-center border-blue-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-semibold"
+                              disabled={activeTab === 'approved'}
+                              placeholder="—"
+                              className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
+                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-red-700 focus:ring-1 focus:ring-red-700'
+                              }`}
                             />
                           </td>
-                          <td className="p-1 border-r bg-blue-50/30">
+                          <td className="p-1 border-r border-neutral-200 bg-neutral-50/50">
                             <input 
                               type="text"
                               value={r.meMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'meMarks', e.target.value)}
-                              placeholder="0 or AB"
-                              className="w-full text-center border-blue-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-semibold"
+                              disabled={activeTab === 'approved'}
+                              placeholder="—"
+                              className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
+                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-red-700 focus:ring-1 focus:ring-red-700'
+                              }`}
                             />
                           </td>
-                          <td className="p-2 border-r text-center font-bold text-blue-600 bg-blue-50/50">{r.marksTotal}</td>
-                          <td className="p-2 border-r bg-green-50/40 whitespace-nowrap">
-                            <span className={`text-xs font-semibold ${
-                              r.resultRemarkEnglish === 'E.R.' ? 'text-red-600' : 'text-green-700'
+                          <td className="p-3 border-r border-neutral-200 text-center font-black font-mono text-neutral-900 bg-neutral-100">{r.marksTotal}</td>
+                          <td className="p-3 border-r border-neutral-200 whitespace-nowrap bg-neutral-50/50">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 border ${
+                              r.resultRemarkEnglish === 'E.R.' 
+                                ? 'bg-red-50 text-red-700 border-red-200' 
+                                : r.resultRemarkEnglish?.startsWith('Passed')
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-neutral-100 text-neutral-700 border-neutral-300'
                             }`}>{r.resultRemarkEnglish || '—'}</span>
                           </td>
-                          <td className="p-2 border-r bg-green-50/40 whitespace-nowrap">
-                            <span className={`text-xs font-semibold ${
-                              r.resultRemarkHindi === 'अनुत्तीर्ण' ? 'text-red-600' : 'text-green-700'
+                          <td className="p-3 border-r border-neutral-200 whitespace-nowrap bg-neutral-50/50">
+                            <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 border ${
+                              r.resultRemarkHindi === 'अनुत्तीर्ण' 
+                                ? 'bg-red-50 text-red-700 border-red-200' 
+                                : r.resultRemarkHindi?.startsWith('उत्तीर्ण')
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-neutral-100 text-neutral-700 border-neutral-300'
                             }`}>{r.resultRemarkHindi || '—'}</span>
                           </td>
-                          <td className="p-2 border-r text-center text-gray-400">{r.iaMaxMarks}</td>
-                          <td className="p-2 border-r text-center text-gray-400">{r.meMaxMarks}</td>
-                          <td className="p-2 border-r text-center text-gray-400 font-bold">{r.maxMarks}</td>
-                          <td className="p-2 border-r text-gray-400 whitespace-nowrap">{r.courseNameEnglish}</td>
-                          <td className="p-2 border-r text-gray-400 whitespace-nowrap">{r.courseNameHindi}</td>
-                          <td className="p-2 border-r text-gray-400 whitespace-nowrap">{r.courseYearEnglish}</td>
-                          <td className="p-2 border-r text-gray-400 whitespace-nowrap">{r.courseYearHindi}</td>
-                          <td className="p-2 border-r text-gray-400 whitespace-nowrap">{r.subjectCode}</td>
-                          <td className="p-2 text-gray-400 whitespace-nowrap">{r.academicYear}</td>
+                          <td className="p-3 border-r border-neutral-200 text-center text-neutral-500 font-mono">{r.iaMaxMarks}</td>
+                          <td className="p-3 border-r border-neutral-200 text-center text-neutral-500 font-mono">{r.meMaxMarks}</td>
+                          <td className="p-3 border-r border-neutral-200 text-center text-neutral-800 font-bold font-mono">{r.maxMarks}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 whitespace-nowrap">{r.courseNameEnglish}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 whitespace-nowrap">{r.courseNameHindi}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 font-mono whitespace-nowrap">{r.courseYearEnglish}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-500 font-mono whitespace-nowrap">{r.courseYearHindi}</td>
+                          <td className="p-3 border-r border-neutral-200 text-neutral-800 font-mono font-bold whitespace-nowrap">{r.subjectCode}</td>
+                          <td className="p-3 text-neutral-500 font-mono whitespace-nowrap">{r.academicYear}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
               </div>
             </div>
           </div>
