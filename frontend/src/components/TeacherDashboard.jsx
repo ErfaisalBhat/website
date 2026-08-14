@@ -266,10 +266,10 @@ const TeacherDashboard = () => {
                           <td className="p-4 text-right">
                             <button 
                               onClick={() => fetchBatchResults(batch._id)} 
-                              className={`text-xs font-bold border px-4 py-1.5 uppercase tracking-wider transition-colors inline-block ${
+                              className={`text-xs font-bold border px-4 py-1.5 uppercase tracking-wider transition-all duration-300 inline-block ${
                                 activeTab === 'approved' 
                                   ? 'text-neutral-700 border-neutral-700 hover:bg-neutral-700 hover:text-white' 
-                                  : 'text-red-700 border-red-700 hover:bg-red-700 hover:text-white'
+                                  : 'text-blue-400 border-blue-400 hover:bg-blue-400 hover:text-white hover:shadow-[0_0_15px_rgba(96,165,250,0.6)]'
                               }`}
                             >
                               {activeTab === 'approved' ? 'View Records' : 'Enter Marks'}
@@ -296,19 +296,19 @@ const TeacherDashboard = () => {
         {selectedBatch && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 z-50">
             <div className="bg-white w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl rounded-none border border-neutral-800 animate-in zoom-in duration-200">
-              <div className="p-6 border-b-4 border-red-700 flex justify-between items-center bg-neutral-900 text-white">
+              <div className="p-6 border-b border-neutral-200 flex justify-between items-center bg-white text-neutral-900">
                 <div>
-                  <h3 className="text-2xl font-black uppercase tracking-widest text-white">Mark Entry System</h3>
-                  <p className="text-sm text-neutral-400 mt-1 font-mono">{batches.find(b => b._id === selectedBatch)?.batchName}</p>
+                  <h3 className="text-2xl font-black uppercase tracking-widest text-neutral-900">Mark Entry System</h3>
+                  <p className="text-sm text-neutral-500 mt-1 font-mono">{batches.find(b => b._id === selectedBatch)?.batchName}</p>
                 </div>
                 <div className="flex gap-4">
                   {activeTab !== 'approved' && (
                     <>
-                      <button onClick={saveProgress} className="bg-neutral-800 text-white border border-neutral-600 px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-neutral-700 transition-colors">Save Progress</button>
-                      <button onClick={submitForApproval} className="bg-red-700 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-colors">Submit for Approval</button>
+                      <button onClick={saveProgress} className="bg-white text-neutral-700 border border-neutral-300 px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-neutral-50 transition-colors">Save Progress</button>
+                      <button onClick={submitForApproval} className="bg-blue-400 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-blue-500 transition-colors">Submit for Approval</button>
                     </>
                   )}
-                  <button onClick={() => setSelectedBatch(null)} className="text-neutral-400 hover:text-white px-3 py-2 transition-colors">
+                  <button onClick={() => setSelectedBatch(null)} className="text-neutral-400 hover:text-neutral-800 px-3 py-2 transition-colors">
                     <XMarkIcon className="w-6 h-6" />
                   </button>
                 </div>
@@ -326,8 +326,8 @@ const TeacherDashboard = () => {
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Student (Hin)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Eng)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Hin)</th>
-                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-red-700 uppercase tracking-wider whitespace-nowrap text-center w-24">IA Marks</th>
-                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-red-700 uppercase tracking-wider text-center w-24">ME Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider whitespace-nowrap text-center w-24">IA Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider text-center w-24">ME Marks</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-center">Total</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Eng)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Hin)</th>
@@ -361,7 +361,7 @@ const TeacherDashboard = () => {
                               disabled={activeTab === 'approved'}
                               placeholder="—"
                               className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-red-700 focus:ring-1 focus:ring-red-700'
+                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
@@ -373,7 +373,7 @@ const TeacherDashboard = () => {
                               disabled={activeTab === 'approved'}
                               placeholder="—"
                               className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-red-700 focus:ring-1 focus:ring-red-700'
+                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
