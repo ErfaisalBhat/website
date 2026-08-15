@@ -15,12 +15,12 @@ const resultSchema = new mongoose.Schema({
     required: true
   },
   iaMarks: {
-    type: Number,
-    default: 0
+    type: String,
+    default: '0'
   },
   meMarks: {
-    type: Number,
-    default: 0
+    type: String,
+    default: '0'
   },
   marksTotal: {
     type: Number,

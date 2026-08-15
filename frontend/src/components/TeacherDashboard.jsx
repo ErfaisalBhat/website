@@ -71,8 +71,13 @@ const TeacherDashboard = () => {
   const computeRemarkPreview = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
     const FAIL = { resultRemarkEnglish: 'E.R.', resultRemarkHindi: 'अनुत्तीर्ण' };
 
-    // Absent in either component = fail
-    if (iaMarks === 'AB' || meMarks === 'AB') return FAIL;
+    const isAB = (v) => v !== null && v !== undefined && v.toString().trim().toUpperCase() === 'AB';
+    const iaIsAB = isAB(iaMarks);
+    const meIsAB = isAB(meMarks);
+
+    if (iaIsAB && meIsAB) return { resultRemarkEnglish: 'AB', resultRemarkHindi: 'अनुत्तीर्ण' };
+    if (iaIsAB || meIsAB) return FAIL;
+    
     if (iaMarks === null || iaMarks === undefined || iaMarks === '') return FAIL;
     if (meMarks === null || meMarks === undefined || meMarks === '') return FAIL;
 

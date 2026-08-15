@@ -383,13 +383,27 @@ const deleteDraftBatch = async (req, res) => {
       return res.status(404).json({ message: 'Draft batch not found or already processed' });
     }
 
+    const studentIds = draftResults.map(r => r.student);
+
     // Delete all results in this batch
     await Result.deleteMany({ batchId, status: 'draft' });
     
     // Delete the associated file upload
     await FileUpload.deleteOne({ batchId });
 
-    res.json({ message: 'Draft batch deleted successfully' });
+    // Clean up orphaned students
+    if (studentIds.length > 0) {
+      for (const sId of studentIds) {
+        if (sId) {
+          const remainingResults = await Result.countDocuments({ student: sId });
+          if (remainingResults === 0) {
+            await User.findByIdAndDelete(sId);
+          }
+        }
+      }
+    }
+
+    res.json({ message: 'Draft batch and orphaned student records deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting draft batch', error: error.message });
   }
@@ -400,7 +414,9 @@ const updateBatchResults = async (req, res) => {
     const { results } = req.body;
     
     await Promise.all(results.map(async (item) => {
-      const marksTotal = (parseFloat(item.iaMarks) || 0) + (parseFloat(item.meMarks) || 0);
+      const ia = item.iaMarks === 'AB' ? 0 : (parseFloat(item.iaMarks) || 0);
+      const me = item.meMarks === 'AB' ? 0 : (parseFloat(item.meMarks) || 0);
+      const marksTotal = ia + me;
       return Result.findByIdAndUpdate(item.resultId, {
         iaMarks: item.iaMarks,
         meMarks: item.meMarks,

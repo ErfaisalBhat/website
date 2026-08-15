@@ -1,6 +1,8 @@
 const csv = require('csv-parse');
 const xlsx = require('xlsx');
 
+const { computeRemark } = require('./remarkCalculator');
+
 const tryParseDate = (dateVal) => {
   if (!dateVal) return '';
   
@@ -48,7 +50,7 @@ const tryParseDate = (dateVal) => {
 
 const processCSV = (buffer) => {
   return new Promise((resolve, reject) => {
-    csv.parse(buffer, { columns: false, trim: true }, (err, data) => {
+    csv.parse(buffer, { columns: false, trim: true, relax_column_count: true }, (err, data) => {
       if (err) return reject(err);
 
       // Always skip first 2 rows:
@@ -84,6 +86,17 @@ const mapRowToResult = (row) => {
   if (isNaN(maxMarks) || maxMarks <= 0) maxMarks = parseFloat(row[19]);
   if (isNaN(maxMarks) || maxMarks <= 0) maxMarks = parseFloat(row[21]);
 
+  const iaMaxMarks = parseFloat(row[18]) || 0;
+  const meMaxMarks = parseFloat(row[19]) || 0;
+  const iaMarks = row[21] && row[21].toString().trim().toUpperCase() === 'AB' ? 'AB' : (isNaN(parseFloat(row[21])) ? '0' : parseFloat(row[21]).toString());
+  const meMarks = row[22] && row[22].toString().trim().toUpperCase() === 'AB' ? 'AB' : (isNaN(parseFloat(row[22])) ? '0' : parseFloat(row[22]).toString());
+  
+  const iaNum = iaMarks === 'AB' ? 0 : parseFloat(iaMarks);
+  const meNum = meMarks === 'AB' ? 0 : parseFloat(meMarks);
+  const marksTotal = iaNum + meNum;
+
+  const computedRemark = computeRemark(iaMarks, iaMaxMarks, meMarks, meMaxMarks);
+
   return {
     sNo:                  parseInt(row[0]) || 0,
     dateOfBirth,
@@ -103,14 +116,14 @@ const mapRowToResult = (row) => {
     modeEnglish:          row[15] || '',
     iaSubCode:            row[16] || '',
     meSubCode:            row[17] || '',
-    iaMaxMarks:           parseFloat(row[18]) || 0,
-    meMaxMarks:           parseFloat(row[19]) || 0,
+    iaMaxMarks,
+    meMaxMarks,
     maxMarks:             maxMarks || 0,
-    iaMarks:              isNaN(parseFloat(row[21])) ? 0 : parseFloat(row[21]),
-    meMarks:              isNaN(parseFloat(row[22])) ? 0 : parseFloat(row[22]),
-    marksTotal:           isNaN(parseFloat(row[23])) ? 0 : parseFloat(row[23]),
-    resultRemarkHindi:    row[24] || '',
-    resultRemarkEnglish:  row[25] || '',
+    iaMarks,
+    meMarks,
+    marksTotal,
+    resultRemarkHindi:    computedRemark.hindi,
+    resultRemarkEnglish:  computedRemark.english,
     dateOfResultHindi:    row[26] || '',
     dateOfResultEnglish:  row[27] || '',
     subjectCode:          row[28]?.toString() || '',

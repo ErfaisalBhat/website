@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useSearchParams } from 'react-router-dom';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 import StudentHeader from './StudentHeader';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -11,6 +12,7 @@ const VerifyCertificate = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   const verifyCertificate = async (certificateNumber) => {
     if (!certificateNumber.trim()) return;
@@ -18,7 +20,7 @@ const VerifyCertificate = () => {
     setError('');
     setResult(null);
     try {
-      const response = await axios.get(`${API_URL}/api/student/verify/${certificateNumber.trim()}`);
+      const response = await axios.get(`${API_URL}/api/student/verify/${encodeURIComponent(certificateNumber.trim())}`);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Certificate not found or invalid');
@@ -34,6 +36,34 @@ const VerifyCertificate = () => {
       verifyCertificate(urlCertNo);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!isScanning) return;
+    
+    const scanner = new Html5QrcodeScanner(
+      "reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
+    );
+    
+    scanner.render(
+      (decodedText) => {
+        setCertNo(decodedText);
+        setIsScanning(false);
+        verifyCertificate(decodedText);
+        scanner.clear().catch(console.error);
+      },
+      (error) => {
+        // ignore
+      }
+    );
+    
+    return () => {
+      try {
+        scanner.clear().catch(() => {});
+      } catch (e) {}
+    };
+  }, [isScanning]);
 
   const handleVerify = (e) => {
     e.preventDefault();
@@ -69,8 +99,31 @@ const VerifyCertificate = () => {
                 >
                   {loading ? 'Verifying...' : 'Verify'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsScanning(!isScanning)}
+                  className="bg-gray-800 hover:bg-gray-900 text-white p-4 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 shrink-0"
+                  title="Scan QR/Barcode"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
               </div>
             </form>
+
+            {isScanning && (
+              <div className="max-w-lg mx-auto mb-10 bg-white p-4 rounded-xl border border-green-200 shadow-sm animate-fadeIn">
+                <div id="reader" className="w-full rounded-lg overflow-hidden"></div>
+                <button 
+                  onClick={() => setIsScanning(false)}
+                  className="mt-4 w-full text-center text-red-500 font-bold hover:text-red-700 bg-red-50 p-2 rounded-lg transition-colors"
+                >
+                  Cancel Scanner
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="max-w-lg mx-auto p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl flex items-center gap-3">

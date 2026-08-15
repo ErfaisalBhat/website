@@ -12,7 +12,8 @@ import {
   TrashIcon,
   EyeIcon,
   PhotoIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -272,8 +273,48 @@ const AdminDashboard = () => {
       ...prev,
       results: prev.results.map(r => {
         if (r._id === id) {
-          const updated = { ...r, [field]: parseFloat(value) || 0 };
-          updated.marksTotal = (updated.iaMarks || 0) + (updated.meMarks || 0);
+          const markValue = value.toString().trim().toUpperCase() === 'AB' ? 'AB' : (parseFloat(value) || 0);
+          const updated = { ...r, [field]: markValue };
+          const ia = updated.iaMarks === 'AB' ? 0 : (parseFloat(updated.iaMarks) || 0);
+          const me = updated.meMarks === 'AB' ? 0 : (parseFloat(updated.meMarks) || 0);
+          updated.marksTotal = ia + me;
+          
+          // Auto-recalculate remarks
+          const iaMax = parseFloat(updated.iaMaxMarks) || 0;
+          const meMax = parseFloat(updated.meMaxMarks) || 0;
+          const FAIL = { english: 'E.R.', hindi: 'अनुत्तीर्ण' };
+          
+          let newRemark = null;
+          const isAB = (v) => v !== null && v !== undefined && v.toString().trim().toUpperCase() === 'AB';
+          const iaIsAB = isAB(updated.iaMarks);
+          const meIsAB = isAB(updated.meMarks);
+
+          if (iaIsAB && meIsAB) newRemark = { english: 'AB', hindi: 'अनुत्तीर्ण' };
+          else if (iaIsAB || meIsAB) newRemark = FAIL;
+          else if (updated.iaMarks === null || updated.iaMarks === undefined || updated.iaMarks === '' ||
+                   updated.meMarks === null || updated.meMarks === undefined || updated.meMarks === '') {
+            newRemark = FAIL;
+          } else {
+            const iaPercent = iaMax > 0 ? (ia / iaMax) * 100 : 0;
+            const mePercent = meMax > 0 ? (me / meMax) * 100 : 0;
+            if (iaPercent < 40 || mePercent < 40) {
+              newRemark = FAIL;
+            } else {
+              const totalMax = iaMax + meMax;
+              const overallPercent = totalMax > 0 ? ((ia + me) / totalMax) * 100 : 0;
+              if (overallPercent >= 75) newRemark = { english: 'Passed, Distinction', hindi: 'उत्तीर्ण, विशिष्टता' };
+              else if (overallPercent >= 60) newRemark = { english: 'Passed, First Division', hindi: 'उत्तीर्ण, प्रथम श्रेणी' };
+              else if (overallPercent >= 55) newRemark = { english: 'Passed, Second Division', hindi: 'उत्तीर्ण, द्वितीय श्रेणी' };
+              else if (overallPercent >= 40) newRemark = { english: 'Passed', hindi: 'उत्तीर्ण' };
+              else newRemark = FAIL;
+            }
+          }
+          
+          if (newRemark) {
+            updated.resultRemarkEnglish = newRemark.english;
+            updated.resultRemarkHindi = newRemark.hindi;
+          }
+
           return updated;
         }
         return r;
@@ -320,21 +361,27 @@ const AdminDashboard = () => {
     if (!previewData || !previewData.results.length) return;
     
     const headers = [
-      'Roll No', 'Enrolment No', 'Candidate Name', 'Father Name', 
-      'IA Marks', 'ME Marks', 'Total Marks', 
-      'Remark English', 'Remark Hindi'
+      'S. No.', 'Date of Birth', 'Roll No.', 'Enrolment Number', 'Course Name (Hindi)', 
+      'Course Name (English)', 'Course Year (Hindi)', 'Course Year (English)', 
+      "Candidate's Name (Hindi)", "Father's Name (Hindi)", "Candidate's Name (English)", 
+      "Father's Name (English)", 'Duration (Hindi)', 'Duration (English)', 'Mode (Hindi)', 
+      'Mode (English)', 'IA Sub Code', 'ME Sub Code', 'IA Max Mark', 'ME Max Mark', 
+      'Maximum Marks', 'Obtained IA Marks', 'Obtained ME Marks', 'Obtained Marks Total', 
+      'Result Remark (Hindi)', 'Result Remark (English)', 'Date of Result (Hindi)', 
+      'Date of Result (English)', 'Subject Code', 'Academic Year', 'Course Name', 
+      'Exam Flag', 'Part', 'Semester'
     ];
     
     const rows = previewData.results.map(r => [
-      r.rollNo,
-      r.enrolmentNo,
-      r.candidateNameEnglish,
-      r.fatherNameEnglish,
-      r.iaMarks,
-      r.meMarks,
-      r.marksTotal,
-      r.resultRemarkEnglish || '',
-      r.resultRemarkHindi || ''
+      r.sNo || '', r.dateOfBirth || '', r.rollNo || '', r.enrolmentNo || '', r.courseNameHindi || '',
+      r.courseNameEnglish || '', r.courseYearHindi || '', r.courseYearEnglish || '',
+      r.candidateNameHindi || '', r.fatherNameHindi || '', r.candidateNameEnglish || '',
+      r.fatherNameEnglish || '', r.durationHindi || '', r.durationEnglish || '', r.modeHindi || '',
+      r.modeEnglish || '', r.iaSubCode || '', r.meSubCode || '', r.iaMaxMarks || 0, r.meMaxMarks || 0,
+      r.maxMarks || 0, r.iaMarks || 0, r.meMarks || 0, r.marksTotal || 0,
+      r.resultRemarkHindi || '', r.resultRemarkEnglish || '', r.dateOfResultHindi || '',
+      r.dateOfResultEnglish || '', r.subjectCode || '', r.academicYear || '', r.courseName || '',
+      r.examFlag || '', r.part || '', r.semester || ''
     ]);
 
     const csvContent = [
@@ -413,7 +460,7 @@ const AdminDashboard = () => {
           <div className="flex items-center gap-1 flex-wrap">
             <NavItem
               icon={CloudArrowUpIcon}
-              label="Upload Records"
+              label="Upload Student Records"
               active={activeTab === 'upload'}
               onClick={() => setActiveTab('upload')}
             />
@@ -425,13 +472,6 @@ const AdminDashboard = () => {
               count={draftBatches.length}
             />
             <NavItem
-              icon={CheckBadgeIcon}
-              label="Result Approval"
-              active={activeTab === 'pending'}
-              onClick={() => setActiveTab('pending')}
-              count={pendingBatches.length}
-            />
-            <NavItem
               icon={PhotoIcon}
               label="Student Photos"
               active={activeTab === 'photos'}
@@ -439,16 +479,23 @@ const AdminDashboard = () => {
             />
             <NavItem
               icon={CheckBadgeIcon}
-              label="Published Results"
-              active={activeTab === 'approved'}
-              onClick={() => setActiveTab('approved')}
-              count={approvedBatches.length}
+              label="Result Approval"
+              active={activeTab === 'pending'}
+              onClick={() => setActiveTab('pending')}
+              count={pendingBatches.length}
             />
             <NavItem
               icon={UsersIcon}
               label="Manage Teachers"
               active={activeTab === 'teachers'}
               onClick={() => setActiveTab('teachers')}
+            />
+            <NavItem
+              icon={CheckBadgeIcon}
+              label="Published Results"
+              active={activeTab === 'approved'}
+              onClick={() => setActiveTab('approved')}
+              count={approvedBatches.length}
             />
           </div>
         </div>
@@ -471,7 +518,7 @@ const AdminDashboard = () => {
               <div className="bg-white p-8 rounded-2xl shadow-sm border">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Upload Records</h2>
+                    <h2 className="text-2xl font-bold text-gray-800">Upload Student Records</h2>
                     <p className="text-gray-500">Create a new student result batch by uploading a CSV or Excel file.</p>
                   </div>
                   <a 
@@ -485,7 +532,7 @@ const AdminDashboard = () => {
                 </div>
                 <form onSubmit={handleUpload} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Subject Name</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Programme Name</label>
                     <input 
                       type="text" 
                       value={subject} 
@@ -510,7 +557,7 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                   <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
-                    Upload Records
+                    Upload Student Records
                   </button>
                 </form>
               </div>
@@ -554,13 +601,23 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-4">
                                 <div className="flex items-center gap-4">
-                                  <button 
-                                    onClick={() => setCurrentBatch(batch._id)} 
-                                    className="text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1 group"
-                                  >
-                                    Assign Teacher
-                                    <span className="transform group-hover:translate-x-1 transition-transform">→</span>
-                                  </button>
+                                  {batch.uploader?.role === 'teacher' ? (
+                                    <button 
+                                      onClick={() => setCurrentBatch(batch._id)} 
+                                      className="text-green-600 font-bold hover:text-green-800 flex items-center gap-1 group"
+                                      title="Reassign Teacher"
+                                    >
+                                      {batch.uploader.name}
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      onClick={() => setCurrentBatch(batch._id)} 
+                                      className="text-blue-600 font-bold hover:text-blue-800 flex items-center gap-1 group"
+                                    >
+                                      Assign Teacher
+                                      <span className="transform group-hover:translate-x-1 transition-transform">→</span>
+                                    </button>
+                                  )}
                                   <button 
                                     onClick={() => handleManagePhotos(batch)}
                                     className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
@@ -859,20 +916,10 @@ const AdminDashboard = () => {
                                 {r.rollNo}
                               </td>
                               <td className="p-5 text-right">
-                                <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
-                                  <CloudArrowUpIcon className="w-4 h-4" />
-                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files?.[0]) {
-                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
-                                      }
-                                    }}
-                                  />
-                                </label>
+                                <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
+                                  <LockClosedIcon className="w-4 h-4" />
+                                  Locked (Published)
+                                </span>
                               </td>
                             </tr>
                           ))}
@@ -1194,18 +1241,18 @@ const AdminDashboard = () => {
                         <td className="p-2 border-r text-center text-gray-500 font-bold">{r.maxMarks}</td>
                         <td className="p-1 border-r bg-blue-50/20">
                           <input 
-                            type="number" 
+                            type="text" 
                             value={r.iaMarks} 
                             onChange={(e) => handlePreviewMarkChange(r._id, 'iaMarks', e.target.value)}
-                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-mono"
                           />
                         </td>
                         <td className="p-1 border-r bg-blue-50/20">
                           <input 
-                            type="number" 
+                            type="text" 
                             value={r.meMarks} 
                             onChange={(e) => handlePreviewMarkChange(r._id, 'meMarks', e.target.value)}
-                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-mono"
                           />
                         </td>
                         <td className="p-2 border-r text-center font-bold text-blue-600 bg-blue-50/50">{r.marksTotal}</td>

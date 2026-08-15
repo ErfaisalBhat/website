@@ -7,9 +7,12 @@
 const computeRemark = (iaMarks, iaMaxMarks, meMarks, meMaxMarks) => {
   const FAIL = { english: 'E.R.', hindi: 'अनुत्तीर्ण' };
 
-  // Absent in either component = fail
   const isAB = (v) => v !== null && v !== undefined && v.toString().trim().toUpperCase() === 'AB';
-  if (isAB(iaMarks) || isAB(meMarks)) return FAIL;
+  const iaIsAB = isAB(iaMarks);
+  const meIsAB = isAB(meMarks);
+
+  if (iaIsAB && meIsAB) return { english: 'AB', hindi: 'अनुत्तीर्ण' };
+  if (iaIsAB || meIsAB) return FAIL;
 
   // Missing / empty marks = fail
   if (iaMarks === null || iaMarks === undefined || iaMarks === '' ||
