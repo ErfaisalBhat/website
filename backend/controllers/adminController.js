@@ -291,7 +291,13 @@ const getTeachers = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
+    // Find all student IDs that have at least one non-disapproved result
+    const activeStudentIds = await Result.distinct('student', { status: { $ne: 'disapproved' } });
+
+    const students = await User.find({ 
+                                 role: 'student',
+                                 _id: { $in: activeStudentIds }
+                               })
                                .select('name email rollNo profileImageId')
                                .collation({ locale: "en_US", numericOrdering: true })
                                .sort({ rollNo: 1, name: 1 });

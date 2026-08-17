@@ -70,8 +70,9 @@ const AdminDashboard = () => {
 
   const fetchStudents = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/all-students`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/all-students?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setStudents(data);
@@ -80,12 +81,13 @@ const AdminDashboard = () => {
 
   const fetchApprovedBatches = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/approved-batches`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/approved-batches?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setApprovedBatches(data);
-    } catch (err) { toast.error('Error fetching Published Results'); }
+    } catch (err) { toast.error('Error fetching approved batches'); }
   };
 
   const handleManagePhotos = async (batch) => {
@@ -140,8 +142,9 @@ const AdminDashboard = () => {
 
   const fetchDraftBatches = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/draft-batches`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/draft-batches?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setDraftBatches(data);
@@ -150,8 +153,9 @@ const AdminDashboard = () => {
 
   const fetchPendingBatches = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/pending-results`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/pending-results?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setPendingBatches(data);
@@ -213,6 +217,7 @@ const AdminDashboard = () => {
       if (res.ok) {
         toast.success(data.message || 'Draft batch deleted');
         fetchDraftBatches();
+        fetchStudents();
       } else {
         toast.error(data.message);
       }
@@ -233,6 +238,7 @@ const AdminDashboard = () => {
       if (res.ok) {
         toast.success(data.message || 'Approved batch deleted');
         fetchApprovedBatches();
+        fetchStudents();
       } else {
         toast.error(data.message);
       }
@@ -253,6 +259,7 @@ const AdminDashboard = () => {
         toast.success(data.message || `Batch ${status}d successfully`);
         fetchPendingBatches();
         fetchApprovedBatches();
+        fetchStudents();
         setPreviewData(null);
       } else toast.error(data.message);
     } catch (err) { toast.error('Action failed'); }
@@ -706,20 +713,27 @@ const AdminDashboard = () => {
                                 {r.rollNo}
                               </td>
                               <td className="p-5 text-right">
-                                <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
-                                  <CloudArrowUpIcon className="w-4 h-4" />
-                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files?.[0]) {
-                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
-                                      }
-                                    }}
-                                  />
-                                </label>
+                                {r.student?.profileImageId ? (
+                                  <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
+                                    <LockClosedIcon className="w-4 h-4" />
+                                    Uploaded
+                                  </span>
+                                ) : (
+                                  <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
+                                    <CloudArrowUpIcon className="w-4 h-4" />
+                                    Upload Photo
+                                    <input 
+                                      type="file" 
+                                      className="hidden" 
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                          handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
                               </td>
                             </tr>
                           ))}
@@ -998,19 +1012,26 @@ const AdminDashboard = () => {
                             )}
                           </td>
                           <td className="p-4 text-right">
-                            <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all inline-block shadow-sm">
-                              {student.profileImageId ? 'Change Photo' : 'Upload Photo'}
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    handlePhotoUpload(student._id, e.target.files[0]);
-                                  }
-                                }}
-                              />
-                            </label>
+                            {student.profileImageId ? (
+                               <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
+                                 <LockClosedIcon className="w-4 h-4" />
+                                 Uploaded
+                               </span>
+                            ) : (
+                              <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all inline-block shadow-sm">
+                                Upload Photo
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files?.[0]) {
+                                      handlePhotoUpload(student._id, e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1134,12 +1155,14 @@ const AdminDashboard = () => {
                   <CloudArrowUpIcon className="w-5 h-5" />
                   Export CSV
                 </button>
-                <button 
-                  onClick={handleSavePreviewEdits} 
-                  className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all"
-                >
-                  Save Changes
-                </button>
+                {activeTab !== 'approved' && activeTab !== 'pending' && (
+                  <button 
+                    onClick={handleSavePreviewEdits} 
+                    className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all"
+                  >
+                    Save Changes
+                  </button>
+                )}
                 <button 
                   onClick={() => setPreviewData(null)} 
                   className="p-2 rounded-full hover:bg-gray-100 transition-colors"
@@ -1204,19 +1227,21 @@ const AdminDashboard = () => {
                             ) : (
                               <span className="text-[8px] text-gray-400">No Photo</span>
                             )}
-                            <label className="cursor-pointer bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[8px] hover:bg-blue-100 transition-colors">
-                              {r.student?.profileImageId ? 'Change' : 'Upload'}
-                              <input 
-                                type="file" 
-                                className="hidden" 
-                                accept="image/*"
-                                onChange={(e) => {
-                                  if (e.target.files?.[0]) {
-                                    handlePhotoUpload(r.student._id, e.target.files[0]);
-                                  }
-                                }}
-                              />
-                            </label>
+                            {!r.student?.profileImageId && (
+                              <label className="cursor-pointer bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[8px] hover:bg-blue-100 transition-colors">
+                                Upload
+                                <input 
+                                  type="file" 
+                                  className="hidden" 
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    if (e.target.files?.[0]) {
+                                      handlePhotoUpload(r.student._id, e.target.files[0]);
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
                           </div>
                         </td>
                         <td className="p-2 border-r text-gray-400 text-center">{r.sNo}</td>
@@ -1242,17 +1267,19 @@ const AdminDashboard = () => {
                         <td className="p-1 border-r bg-blue-50/20">
                           <input 
                             type="text" 
-                            value={r.iaMarks} 
+                            value={r.iaMarks ?? ''} 
                             onChange={(e) => handlePreviewMarkChange(r._id, 'iaMarks', e.target.value)}
-                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-mono"
+                            disabled={r.iaMarks !== null && r.iaMarks !== undefined && r.iaMarks !== ''}
+                            className={`w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all font-mono ${r.iaMarks !== null && r.iaMarks !== undefined && r.iaMarks !== '' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'}`}
                           />
                         </td>
                         <td className="p-1 border-r bg-blue-50/20">
                           <input 
                             type="text" 
-                            value={r.meMarks} 
+                            value={r.meMarks ?? ''} 
                             onChange={(e) => handlePreviewMarkChange(r._id, 'meMarks', e.target.value)}
-                            className="w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white font-mono"
+                            disabled={r.meMarks !== null && r.meMarks !== undefined && r.meMarks !== ''}
+                            className={`w-full text-center border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all font-mono ${r.meMarks !== null && r.meMarks !== undefined && r.meMarks !== '' ? 'bg-gray-100 cursor-not-allowed text-gray-500' : 'bg-white'}`}
                           />
                         </td>
                         <td className="p-2 border-r text-center font-bold text-blue-600 bg-blue-50/50">{r.marksTotal}</td>
@@ -1261,7 +1288,8 @@ const AdminDashboard = () => {
                             type="text" 
                             value={r.resultRemarkEnglish || ''} 
                             onChange={(e) => handlePreviewRemarkChange(r._id, 'resultRemarkEnglish', e.target.value)}
-                            className="w-full border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                            disabled={true}
+                            className={`w-full border-gray-200 border rounded-lg p-1.5 outline-none transition-all bg-gray-100 text-gray-500 cursor-not-allowed`}
                           />
                         </td>
                         <td className="p-1 border-r bg-blue-50/20">
@@ -1269,7 +1297,8 @@ const AdminDashboard = () => {
                             type="text" 
                             value={r.resultRemarkHindi || ''} 
                             onChange={(e) => handlePreviewRemarkChange(r._id, 'resultRemarkHindi', e.target.value)}
-                            className="w-full border-gray-200 border rounded-lg p-1.5 focus:ring-1 focus:ring-blue-500 outline-none transition-all bg-white"
+                            disabled={true}
+                            className={`w-full border-gray-200 border rounded-lg p-1.5 outline-none transition-all bg-gray-100 text-gray-500 cursor-not-allowed`}
                           />
                         </td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.dateOfResultEnglish}</td>

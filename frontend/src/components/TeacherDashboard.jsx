@@ -166,6 +166,10 @@ const TeacherDashboard = () => {
   const approvedBatches = batches.filter(b => b.status === 'approved');
   const displayBatches = activeTab === 'batches' ? activeBatches : approvedBatches;
 
+  const currentBatch = batches.find(b => b._id === selectedBatch);
+  const isPending = currentBatch?.status === 'pending';
+  const isLocked = activeTab === 'approved' || isPending;
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar */}
@@ -274,10 +278,12 @@ const TeacherDashboard = () => {
                               className={`text-xs font-bold border px-4 py-1.5 uppercase tracking-wider transition-all duration-300 inline-block ${
                                 activeTab === 'approved' 
                                   ? 'text-neutral-700 border-neutral-700 hover:bg-neutral-700 hover:text-white' 
+                                  : batch.status === 'pending'
+                                  ? 'text-amber-500 border-amber-500 hover:bg-amber-500 hover:text-white hover:shadow-[0_0_15px_rgba(245,158,11,0.6)]'
                                   : 'text-blue-400 border-blue-400 hover:bg-blue-400 hover:text-white hover:shadow-[0_0_15px_rgba(96,165,250,0.6)]'
                               }`}
                             >
-                              {activeTab === 'approved' ? 'View Records' : 'Enter Marks'}
+                              {activeTab === 'approved' ? 'View Records' : batch.status === 'pending' ? 'View Pending' : 'Enter Marks'}
                             </button>
                           </td>
                         </tr>
@@ -303,11 +309,13 @@ const TeacherDashboard = () => {
             <div className="bg-white w-full max-w-[95vw] max-h-[90vh] flex flex-col shadow-2xl rounded-none border border-neutral-800 animate-in zoom-in duration-200">
               <div className="p-6 border-b border-neutral-200 flex justify-between items-center bg-white text-neutral-900">
                 <div>
-                  <h3 className="text-2xl font-black uppercase tracking-widest text-neutral-900">Mark Entry System</h3>
-                  <p className="text-sm text-neutral-500 mt-1 font-mono">{batches.find(b => b._id === selectedBatch)?.batchName}</p>
+                  <h3 className="text-2xl font-black uppercase tracking-widest text-neutral-900">
+                    {isPending ? 'Pending Mark Entry' : 'Mark Entry System'}
+                  </h3>
+                  <p className="text-sm text-neutral-500 mt-1 font-mono">{currentBatch?.batchName}</p>
                 </div>
                 <div className="flex gap-4">
-                  {activeTab !== 'approved' && (
+                  {!isLocked && (
                     <>
                       <button onClick={saveProgress} className="bg-white text-neutral-700 border border-neutral-300 px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-neutral-50 transition-colors">Save Progress</button>
                       <button onClick={submitForApproval} className="bg-blue-400 text-white px-6 py-2.5 text-xs font-bold uppercase tracking-widest hover:bg-blue-500 transition-colors">Submit for Approval</button>
@@ -363,10 +371,10 @@ const TeacherDashboard = () => {
                               type="text"
                               value={r.iaMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'iaMarks', e.target.value)}
-                              disabled={activeTab === 'approved'}
+                              disabled={isLocked}
                               placeholder="—"
                               className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
+                                isLocked ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
@@ -375,10 +383,10 @@ const TeacherDashboard = () => {
                               type="text"
                               value={r.meMarks} 
                               onChange={(e) => handleMarkChange(r._id, 'meMarks', e.target.value)}
-                              disabled={activeTab === 'approved'}
+                              disabled={isLocked}
                               placeholder="—"
                               className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                activeTab === 'approved' ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
+                                isLocked ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
