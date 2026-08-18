@@ -32,7 +32,7 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, count }) => (
 );
 
 const TeacherDashboard = () => {
-  const { user, logout } = useAuth();
+  const { teacherUser: user, logoutTeacher: logout } = useAuth();
   const [activeTab, setActiveTab] = useState('batches');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [batches, setBatches] = useState([]);
@@ -42,6 +42,16 @@ const TeacherDashboard = () => {
 
   useEffect(() => {
     fetchAssignedBatches();
+  }, []);
+
+  useEffect(() => {
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(API_URL);
+      socket.on('data_updated', () => {
+        fetchAssignedBatches();
+      });
+      return () => socket.disconnect();
+    });
   }, []);
 
   const fetchAssignedBatches = async () => {

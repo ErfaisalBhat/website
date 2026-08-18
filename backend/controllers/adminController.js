@@ -16,9 +16,9 @@ cloudinary.config({
 // Admin uploads student data -> Creates "draft" results
 const uploadStudents = async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    if (!req.file) return res.status(201).json({ message: 'No file uploaded' });
     const { subject } = req.body;
-    if (!subject) return res.status(400).json({ message: 'Subject is required' });
+    if (!subject) return res.status(201).json({ message: 'Subject is required' });
 
     console.log(`Starting upload for subject: ${subject}, file: ${req.file.originalname}`);
 
@@ -36,11 +36,11 @@ const uploadStudents = async (req, res) => {
       }
     } catch (parseErr) {
       console.error('Parsing Error:', parseErr);
-      return res.status(400).json({ message: 'Error parsing file. Ensure it is a valid CSV or Excel file.', error: parseErr.message });
+      return res.status(201).json({ message: 'Error parsing file. Ensure it is a valid CSV or Excel file.', error: parseErr.message });
     }
 
     if (!parsedResults.length) {
-      return res.status(400).json({ message: 'No valid student data found. Please check your file format.' });
+      return res.status(201).json({ message: 'No valid student data found. Please check your file format.' });
     }
 
     // Store raw file
@@ -260,7 +260,7 @@ const approveBatch = async (req, res) => {
     const missingPhotos = results.filter(r => !r.student || !r.student.profileImageId);
     
     if (missingPhotos.length > 0) {
-      return res.status(400).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
+      return res.status(201).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
     }
 
     await Result.updateMany({ batchId }, { status: 'approved', approvedAt: new Date() });
@@ -335,7 +335,7 @@ const addTeacher = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     const teacherExists = await User.findOne({ email });
-    if (teacherExists) return res.status(400).json({ message: 'Teacher already exists' });
+    if (teacherExists) return res.status(201).json({ message: 'Teacher already exists' });
 
     const teacher = await User.create({ name, email, password, role: 'teacher' });
     res.status(201).json({ _id: teacher._id, name: teacher.name, email: teacher.email, role: teacher.role });
@@ -347,13 +347,13 @@ const addTeacher = async (req, res) => {
 const removeTeacher = async (req, res) => {
   try {
     const teacherId = req.params.teacherId;
-    if (!mongoose.Types.ObjectId.isValid(teacherId)) return res.status(400).json({ message: 'Invalid teacher ID' });
+    if (!mongoose.Types.ObjectId.isValid(teacherId)) return res.status(201).json({ message: 'Invalid teacher ID' });
 
     const pendingResults = await Result.findOne({ uploadedBy: teacherId, status: 'pending' });
-    if (pendingResults) return res.status(400).json({ message: 'Cannot remove teacher with pending results.' });
+    if (pendingResults) return res.status(201).json({ message: 'Cannot remove teacher with pending results.' });
 
     const removedTeacher = await User.findByIdAndDelete(teacherId);
-    if (!removedTeacher) return res.status(404).json({ message: 'Teacher not found' });
+    if (!removedTeacher) return res.status(201).json({ message: 'Teacher not found' });
 
     res.json({ message: 'Teacher removed successfully' });
   } catch (error) {
@@ -365,10 +365,10 @@ const changeTeacherPassword = async (req, res) => {
   try {
     const teacherId = req.params.teacherId;
     const { newPassword } = req.body;
-    if (!newPassword) return res.status(400).json({ message: 'Password is required' });
+    if (!newPassword) return res.status(201).json({ message: 'Password is required' });
 
     const user = await User.findById(teacherId);
-    if (!user) return res.status(404).json({ message: 'Teacher not found' });
+    if (!user) return res.status(201).json({ message: 'Teacher not found' });
 
     user.password = newPassword; // Hashing handled by pre-save hook
     await user.save();
@@ -386,7 +386,7 @@ const deleteDraftBatch = async (req, res) => {
     // Ensure the batch is actually a draft before deleting
     const draftResults = await Result.find({ batchId, status: 'draft' });
     if (draftResults.length === 0) {
-      return res.status(404).json({ message: 'Draft batch not found or already processed' });
+      return res.status(201).json({ message: 'Draft batch not found or already processed' });
     }
 
     const studentIds = draftResults.map(r => r.student);
@@ -446,7 +446,7 @@ const uploadStudentPhoto = async (req, res) => {
     
     if (!req.file) {
       console.log('Error: No file in request');
-      return res.status(400).json({ message: 'No image uploaded' });
+      return res.status(201).json({ message: 'No image uploaded' });
     }
 
     console.log('Cloud Name (at upload time):', process.env.CLOUDINARY_CLOUD_NAME);
@@ -476,7 +476,7 @@ const uploadStudentPhoto = async (req, res) => {
 
     if (!updatedUser) {
       console.log('Error: Student not found in DB');
-      return res.status(404).json({ message: 'Student not found in database' });
+      return res.status(201).json({ message: 'Student not found in database' });
     }
 
     console.log('Database updated successfully');

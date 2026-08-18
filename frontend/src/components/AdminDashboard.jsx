@@ -38,7 +38,7 @@ const NavItem = ({ icon: Icon, label, active, onClick, count }) => (
 );
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { adminUser: user, logoutAdmin: logout } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
   
   // Existing state
@@ -66,6 +66,20 @@ const AdminDashboard = () => {
     fetchPendingBatches();
     fetchApprovedBatches();
     fetchStudents();
+  }, []);
+
+  useEffect(() => {
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(API_URL);
+      socket.on('data_updated', () => {
+        fetchTeachers();
+        fetchDraftBatches();
+        fetchPendingBatches();
+        fetchApprovedBatches();
+        fetchStudents();
+      });
+      return () => socket.disconnect();
+    });
   }, []);
 
   const fetchStudents = async () => {

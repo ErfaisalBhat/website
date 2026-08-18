@@ -1,28 +1,22 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [student, setStudent] = useState(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
+  const [adminUser, setAdminUser] = useState(() => {
+    const storedUser = localStorage.getItem('adminUser');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [teacherUser, setTeacherUser] = useState(() => {
+    const storedUser = localStorage.getItem('teacherUser');
+    return storedUser ? JSON.parse(storedUser) : null;
+  });
+  const [loading, setLoading] = useState(false);
+  const [student, setStudent] = useState(() => {
     const token = localStorage.getItem('studentToken');
     const storedStudentInfo = localStorage.getItem('studentInfo');
-    
-    if (token && storedStudentInfo) {
-      setStudent(JSON.parse(storedStudentInfo));
-    }
-  }, []);
+    return token && storedStudentInfo ? JSON.parse(storedStudentInfo) : null;
+  });
 
   const login = async (email, password) => {
     try {
@@ -41,9 +35,15 @@ export const AuthProvider = ({ children }) => {
       console.log('Login response:', data); // Debug log
 
       if (response.ok) {
-        localStorage.setItem('user', JSON.stringify(data));
-        localStorage.setItem('token', data.token); // Add this line
-        setUser(data);
+        if (data.role === 'admin') {
+          localStorage.setItem('adminUser', JSON.stringify(data));
+          localStorage.setItem('adminToken', data.token);
+          setAdminUser(data);
+        } else if (data.role === 'teacher') {
+          localStorage.setItem('teacherUser', JSON.stringify(data));
+          localStorage.setItem('teacherToken', data.token);
+          setTeacherUser(data);
+        }
         return { success: true, user: data };
       } else {
         return { success: false, message: data.message };
@@ -54,10 +54,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    setUser(null);
+  const logoutAdmin = () => {
+    localStorage.removeItem('adminUser');
+    localStorage.removeItem('adminToken');
+    setAdminUser(null);
+  };
+
+  const logoutTeacher = () => {
+    localStorage.removeItem('teacherUser');
+    localStorage.removeItem('teacherToken');
+    setTeacherUser(null);
   };
 
   const loginStudent = (data) => {
@@ -78,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, student, loginStudent, logoutStudent, updateStudent }}>
+    <AuthContext.Provider value={{ adminUser, teacherUser, login, logoutAdmin, logoutTeacher, loading, student, loginStudent, logoutStudent, updateStudent }}>
       {children}
     </AuthContext.Provider>
   );
