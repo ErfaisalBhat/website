@@ -293,6 +293,7 @@ const getStudents = async (req, res) => {
   try {
     // Find all student IDs that have at least one non-disapproved result
     const activeStudentIds = await Result.distinct('student', { status: { $ne: 'disapproved' } });
+    const approvedStudentIds = await Result.distinct('student', { status: 'approved' });
 
     const students = await User.find({ 
                                  role: 'student',
@@ -302,12 +303,15 @@ const getStudents = async (req, res) => {
                                .collation({ locale: "en_US", numericOrdering: true })
                                .sort({ rollNo: 1, name: 1 });
                                
+    const approvedSet = new Set(approvedStudentIds.map(id => id?.toString()));
+
     const formattedStudents = students.map(s => ({
       _id: s._id,
       name: s.name,
       email: s.email,
       rollNo: s.rollNo || s.email.split('@')[0],
-      profileImageId: s.profileImageId
+      profileImageId: s.profileImageId,
+      hasApprovedResult: approvedSet.has(s._id.toString())
     }));
                                
     res.json(formattedStudents);

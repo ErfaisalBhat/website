@@ -50,6 +50,11 @@ const saveProgress = async (req, res) => {
     await Promise.all(results.map(async (item) => {
       const existing = await Result.findById(item.resultId);
       if (!existing) return;
+      
+      // Ensure only the assigned teacher can save progress
+      if (existing.uploadedBy.toString() !== req.user._id.toString()) {
+        throw new Error('Not authorized to modify this result');
+      }
 
       // Treat 'AB' (absent) as 0 for total calculation only
       const isAB = (v) => v !== null && v !== undefined && v.toString().trim().toUpperCase() === 'AB';

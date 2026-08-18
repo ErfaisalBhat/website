@@ -727,27 +727,20 @@ const AdminDashboard = () => {
                                 {r.rollNo}
                               </td>
                               <td className="p-5 text-right">
-                                {r.student?.profileImageId ? (
-                                  <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
-                                    <LockClosedIcon className="w-4 h-4" />
-                                    Uploaded
-                                  </span>
-                                ) : (
-                                  <label className="cursor-pointer inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-md hover:shadow-blue-200">
-                                    <CloudArrowUpIcon className="w-4 h-4" />
-                                    Upload Photo
-                                    <input 
-                                      type="file" 
-                                      className="hidden" 
-                                      accept="image/*"
-                                      onChange={(e) => {
-                                        if (e.target.files?.[0]) {
-                                          handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                )}
+                                <label className={`cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-all shadow-md ${r.student?.profileImageId ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}>
+                                  <CloudArrowUpIcon className="w-4 h-4" />
+                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      if (e.target.files?.[0]) {
+                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
+                                      }
+                                    }}
+                                  />
+                                </label>
                               </td>
                             </tr>
                           ))}
@@ -1026,14 +1019,14 @@ const AdminDashboard = () => {
                             )}
                           </td>
                           <td className="p-4 text-right">
-                            {student.profileImageId ? (
+                            {student.hasApprovedResult && student.profileImageId ? (
                                <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
                                  <LockClosedIcon className="w-4 h-4" />
-                                 Uploaded
+                                 Locked (Published)
                                </span>
                             ) : (
-                              <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all inline-block shadow-sm">
-                                Upload Photo
+                              <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold transition-all inline-block shadow-sm ${student.profileImageId ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}>
+                                {student.profileImageId ? 'Change Photo' : 'Upload Photo'}
                                 <input 
                                   type="file" 
                                   className="hidden" 
@@ -1241,9 +1234,9 @@ const AdminDashboard = () => {
                             ) : (
                               <span className="text-[8px] text-gray-400">No Photo</span>
                             )}
-                            {!r.student?.profileImageId && (
-                              <label className="cursor-pointer bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[8px] hover:bg-blue-100 transition-colors">
-                                Upload
+                            {r.status !== 'approved' && (
+                              <label className={`cursor-pointer px-2 py-0.5 rounded text-[8px] transition-colors border ${r.student?.profileImageId ? 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50' : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'}`}>
+                                {r.student?.profileImageId ? 'Change' : 'Upload'}
                                 <input 
                                   type="file" 
                                   className="hidden" 
