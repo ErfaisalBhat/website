@@ -816,9 +816,14 @@ const AdminDashboard = () => {
                   <>
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-800">Published Results</h2>
-                      <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold">
-                        {approvedBatches.length} Verified
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                          {approvedBatches.filter(b => b.status === 'approved').length} Approved
+                        </span>
+                        <span className="bg-red-100 text-red-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                          {approvedBatches.filter(b => b.status === 'disapproved').length} Disapproved
+                        </span>
+                      </div>
                     </div>
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
                        <table className="w-full text-left">
@@ -828,19 +833,27 @@ const AdminDashboard = () => {
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Assigned Teacher</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Students</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase">Date</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Status</th>
                             <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y">
                           {approvedBatches.map(batch => (
-                            <tr key={batch._id} className="hover:bg-gray-50 transition-colors">
+                            <tr
+                              key={batch._id}
+                              className={`transition-colors ${
+                                batch.status === 'disapproved'
+                                  ? 'bg-red-50/60 hover:bg-red-50'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                            >
                               <td className="p-4">
                                 <p className="font-bold text-gray-800">{batch.batchName}</p>
                                 <p className="text-xs text-gray-400">{batch.subject}</p>
                               </td>
                               <td className="p-4">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${batch.status === 'disapproved' ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
                                     {batch.teacher.name[0]}
                                   </div>
                                   <span className="text-gray-700">{batch.teacher.name}</span>
@@ -850,26 +863,39 @@ const AdminDashboard = () => {
                               <td className="p-4 text-gray-500">
                                 {batch.approvedAt ? new Date(batch.approvedAt).toLocaleDateString() : '—'}
                               </td>
+                              <td className="p-4 text-center">
+                                {batch.status === 'disapproved' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border bg-red-50 text-red-700 border-red-200 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />
+                                    Disapproved
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border bg-emerald-50 text-emerald-700 border-emerald-200 rounded-full">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                    Approved
+                                  </span>
+                                )}
+                              </td>
                               <td className="p-4">
                                 <div className="flex justify-end gap-2 items-center">
-                                  <button 
+                                  <button
                                     onClick={() => fetchPreview(batch._id)}
                                     className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
                                     title="Preview Results"
                                   >
                                     <EyeIcon className="w-5 h-5" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleManagePhotos(batch)}
                                     className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
                                     title="Manage Photographs"
                                   >
                                     <PhotoIcon className="w-5 h-5" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleDeleteApproved(batch._id)}
                                     className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
-                                    title="Delete Approved Batch"
+                                    title="Delete Batch"
                                   >
                                     <TrashIcon className="w-5 h-5" />
                                   </button>
@@ -879,7 +905,7 @@ const AdminDashboard = () => {
                           ))}
                           {approvedBatches.length === 0 && (
                             <tr>
-                              <td colSpan="5" className="p-12 text-center text-gray-400">No Published Results found</td>
+                              <td colSpan="6" className="p-12 text-center text-gray-400">No Published Results found</td>
                             </tr>
                           )}
                         </tbody>

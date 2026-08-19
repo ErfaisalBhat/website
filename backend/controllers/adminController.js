@@ -54,33 +54,25 @@ const uploadStudents = async (req, res) => {
 
     const resultsToInsert = [];
     
-    // Process students sequentially to avoid duplicate email race conditions
+    // Process students — always create fresh User records per batch so photos never carry over
     for (const data of parsedResults) {
-      let student = await User.findOne({ email: data.email, role: 'student' });
-      
-      if (!student) {
-        const password = data.dateOfBirth ? data.dateOfBirth.replace(/-/g, '') : 'student123';
-        try {
-          student = await User.create({
-            name: data.candidateNameEnglish || data.email.split('@')[0],
-            email: data.email,
-            password,
-            role: 'student',
-            dateOfBirth: data.dateOfBirth,
-            rollNo: data.rollNo || data.email.split('@')[0]
-          });
-        } catch (createErr) {
-          if (createErr.code === 11000) {
-            student = await User.findOne({ email: data.email, role: 'student' });
-          } else {
-            throw createErr;
-          }
-        }
-      }
+      // Generate a batch-scoped unique email so each upload is completely independent
+      const batchEmail = `${data.email.split('@')[0]}_${batchId}@student.com`;
+      const password = data.dateOfBirth ? data.dateOfBirth.replace(/-/g, '') : 'student123';
 
-      if (student && !student.rollNo) {
-        student.rollNo = data.rollNo || data.email.split('@')[0];
-        await student.save();
+      let student;
+      try {
+        student = await User.create({
+          name: data.candidateNameEnglish || data.email.split('@')[0],
+          email: batchEmail,
+          password,
+          role: 'student',
+          dateOfBirth: data.dateOfBirth,
+          rollNo: data.rollNo || data.email.split('@')[0]
+          // profileImageId intentionally NOT set — fresh upload = no photo
+        });
+      } catch (createErr) {
+        throw createErr;
       }
 
       resultsToInsert.push({
@@ -190,12 +182,13 @@ const getPendingResults = async (req, res) => {
 const getApprovedBatches = async (req, res) => {
   try {
     const batches = await Result.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: { status: { $in: ['approved', 'disapproved'] } } },
       {
         $group: {
           _id: '$batchId',
           batchName: { $first: '$batchName' },
           subject: { $first: '$subject' },
+          status: { $first: '$status' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
           batchSeq: { $first: '$batchSeq' },
@@ -225,12 +218,12 @@ const deleteApprovedBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
     
-    // Find all results in this batch to get student IDs
-    const results = await Result.find({ batchId, status: 'approved' });
+    // Find all results in this batch (approved or disapproved) to get student IDs
+    const results = await Result.find({ batchId, status: { $in: ['approved', 'disapproved'] } });
     const studentIds = results.map(r => r.student);
 
-    // Delete all results in this batch first
-    await Result.deleteMany({ batchId, status: 'approved' });
+    // Delete all results in this batch
+    await Result.deleteMany({ batchId, status: { $in: ['approved', 'disapproved'] } });
     
     // Delete the associated file upload
     await FileUpload.deleteOne({ batchId });
@@ -245,9 +238,9 @@ const deleteApprovedBatch = async (req, res) => {
       }
     }
 
-    res.json({ message: 'Approved batch and orphaned student records deleted successfully' });
+    res.json({ message: 'Batch and associated student records deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting approved batch', error: error.message });
+    res.status(500).json({ message: 'Error deleting batch', error: error.message });
   }
 };
 

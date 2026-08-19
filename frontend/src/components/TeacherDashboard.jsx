@@ -12,21 +12,32 @@ import {
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const SidebarItem = ({ icon: Icon, label, active, onClick, count }) => (
+const SidebarItem = ({ icon: Icon, label, active, onClick, count, collapsed }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 border-l-4 transition-all duration-200 ${
-      active 
-        ? 'border-red-700 bg-neutral-800 text-white' 
-        : 'border-transparent text-gray-400 hover:bg-neutral-800 hover:text-gray-100'
+    title={collapsed ? label : undefined}
+    className={`relative w-full flex items-center gap-3 px-4 py-3 rounded-lg mx-2 transition-all duration-200 group ${
+      collapsed ? 'justify-center mx-2 w-[calc(100%-16px)]' : 'w-[calc(100%-16px)]'
+    } ${
+      active
+        ? 'bg-gradient-to-r from-red-700/90 to-red-800/80 text-white shadow-lg shadow-red-900/30'
+        : 'text-neutral-400 hover:bg-white/5 hover:text-neutral-100'
     }`}
   >
-    <Icon className="w-5 h-5" />
-    <span className="font-semibold tracking-wide text-sm flex-1 text-left uppercase">{label}</span>
-    {count > 0 && (
-      <span className={`text-[10px] px-2 py-0.5 font-bold ${active ? 'bg-red-700 text-white' : 'bg-neutral-700 text-gray-300'}`}>
+    {active && (
+      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-red-400 rounded-r-full" />
+    )}
+    <Icon className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-white' : 'text-neutral-400 group-hover:text-neutral-200'}`} />
+    {!collapsed && (
+      <span className="font-medium text-[13px] flex-1 text-left tracking-wide">{label}</span>
+    )}
+    {!collapsed && count > 0 && (
+      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${active ? 'bg-white/20 text-white' : 'bg-neutral-700 text-neutral-300'}`}>
         {count}
       </span>
+    )}
+    {collapsed && count > 0 && (
+      <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500" />
     )}
   </button>
 );
@@ -114,13 +125,33 @@ const TeacherDashboard = () => {
     return FAIL;
   };
 
+  const IA_MAX = 30;
+  const ME_MAX = 70;
+
   const handleMarkChange = (id, field, value) => {
+    const raw = value.toString().trim();
+    const isAB = raw.toUpperCase() === 'AB';
+
+    // Determine the max for this field
+    const maxAllowed = field === 'iaMarks' ? IA_MAX : ME_MAX;
+
+    // If not AB, validate numeric range
+    if (!isAB && raw !== '') {
+      const num = parseFloat(raw);
+      if (!isNaN(num) && num > maxAllowed) {
+        toast.error(`${field === 'iaMarks' ? 'IA' : 'ME'} Marks cannot exceed ${maxAllowed}`, {
+          style: { borderRadius: 0, background: '#b91c1c', color: '#fff' }
+        });
+        return; // reject the change
+      }
+    }
+
     setResults(prev => prev.map(r => {
       if (r._id === id) {
-        // Allow 'AB' string for absent, otherwise store as number
-        const markValue = value.toString().trim().toUpperCase() === 'AB' ? 'AB' : (parseFloat(value) || 0);
+        // Allow 'AB' string for absent, otherwise store numeric or raw string while typing
+        const markValue = isAB ? 'AB' : (raw === '' ? '' : (isNaN(parseFloat(raw)) ? raw : parseFloat(raw)));
         const updated = { ...r, [field]: markValue };
-        // Total: treat AB as 0 for display purposes
+        // Total: treat AB / empty as 0 for display purposes
         const ia = updated.iaMarks === 'AB' ? 0 : (parseFloat(updated.iaMarks) || 0);
         const me = updated.meMarks === 'AB' ? 0 : (parseFloat(updated.meMarks) || 0);
         updated.marksTotal = ia + me;
@@ -183,44 +214,90 @@ const TeacherDashboard = () => {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`${
-          isSidebarOpen ? 'w-64' : 'w-20'
-        } bg-neutral-900 text-white transition-all duration-300 flex flex-col z-40 border-r border-neutral-800`}
+          isSidebarOpen ? 'w-64' : 'w-[72px]'
+        } bg-[#0f1117] text-white transition-all duration-300 ease-in-out flex flex-col z-40 border-r border-white/5 relative`}
       >
-        <div className="p-6 flex items-center justify-between border-b border-neutral-800">
-          {isSidebarOpen && <h1 className="text-lg font-black tracking-widest uppercase text-white">
-            <span className="text-red-600 mr-1">Faculty</span> Portal
-          </h1>}
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-1.5 text-neutral-400 hover:text-white transition-colors">
-            {isSidebarOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
+        {/* Logo / Brand */}
+        <div className={`flex items-center border-b border-white/5 ${isSidebarOpen ? 'px-5 py-5 gap-3' : 'justify-center py-5'}`}>
+          <div className="w-8 h-8 bg-red-600 flex-shrink-0 flex items-center justify-center rounded-md shadow-lg shadow-red-900/40">
+            <span className="text-white font-black text-sm">F</span>
+          </div>
+          {isSidebarOpen && (
+            <div>
+              <h1 className="text-[13px] font-black tracking-widest uppercase text-white leading-none">
+                Faculty <span className="text-red-500">Portal</span>
+              </h1>
+              
+            </div>
+          )}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className={`${isSidebarOpen ? 'ml-auto' : 'hidden'} p-1 text-neutral-500 hover:text-white rounded transition-colors`}
+          >
+            <XMarkIcon className="w-4 h-4" />
           </button>
         </div>
 
-        <nav className="flex-1 space-y-1 mt-6">
-          <SidebarItem 
-            icon={ClipboardDocumentListIcon} 
-            label={isSidebarOpen ? "Assigned Batches" : ""} 
-            active={activeTab === 'batches'} 
-            onClick={() => setActiveTab('batches')} 
+        {/* Collapse toggle when closed */}
+        {!isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex justify-center py-3 text-neutral-500 hover:text-white transition-colors border-b border-white/5"
+          >
+            <Bars3Icon className="w-4 h-4" />
+          </button>
+        )}
+
+        {/* Teacher Profile Card */}
+        <div className={`${isSidebarOpen ? 'mx-3 my-4 p-3 rounded-xl bg-white/5 border border-white/8 flex items-center gap-3' : 'flex justify-center py-4 border-b border-white/5'}`}>
+          <div className={`flex-shrink-0 flex items-center justify-center rounded-full font-black uppercase text-white bg-gradient-to-br from-red-600 to-red-800 shadow-md shadow-red-900/40 ${isSidebarOpen ? 'w-9 h-9 text-sm' : 'w-9 h-9 text-sm'}`}
+            title={!isSidebarOpen ? user?.name : undefined}
+          >
+            {user?.name ? user.name.charAt(0) : 'T'}
+          </div>
+          {isSidebarOpen && (
+            <div className="overflow-hidden flex-1 min-w-0">
+              <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-semibold leading-none">Faculty</p>
+              <p className="text-[13px] font-semibold text-white truncate mt-0.5">{user?.name || 'Teacher'}</p>
+              <p className="text-[10px] text-neutral-500 truncate mt-0.5">{user?.email || ''}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-2 space-y-1">
+          {isSidebarOpen && (
+            <p className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold px-3 pb-2">Navigation</p>
+          )}
+          <SidebarItem
+            icon={ClipboardDocumentListIcon}
+            label="Assigned Batches"
+            active={activeTab === 'batches'}
+            onClick={() => setActiveTab('batches')}
             count={activeBatches.length}
+            collapsed={!isSidebarOpen}
           />
-          <SidebarItem 
-            icon={DocumentCheckIcon} 
-            label={isSidebarOpen ? "Approved Records" : ""} 
-            active={activeTab === 'approved'} 
-            onClick={() => setActiveTab('approved')} 
+          <SidebarItem
+            icon={DocumentCheckIcon}
+            label="Approved Records"
+            active={activeTab === 'approved'}
+            onClick={() => setActiveTab('approved')}
             count={approvedBatches.length}
+            collapsed={!isSidebarOpen}
           />
         </nav>
 
-        <div className="p-4 border-t border-neutral-800">
-          <button 
+        {/* Logout */}
+        <div className="p-3 border-t border-white/5">
+          <button
             onClick={logout}
-            className={`w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-neutral-800 transition-colors ${!isSidebarOpen && 'justify-center'}`}
+            title={!isSidebarOpen ? 'Logout' : undefined}
+            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-neutral-500 hover:bg-red-900/20 hover:text-red-400 transition-all duration-200 ${!isSidebarOpen ? 'justify-center' : ''}`}
           >
-            <ArrowLeftOnRectangleIcon className="w-5 h-5" />
-            {isSidebarOpen && <span className="font-semibold text-sm uppercase tracking-wider">Logout</span>}
+            <ArrowLeftOnRectangleIcon className="w-[18px] h-[18px] flex-shrink-0" />
+            {isSidebarOpen && <span className="text-[13px] font-medium">Sign Out</span>}
           </button>
         </div>
       </aside>
@@ -349,8 +426,12 @@ const TeacherDashboard = () => {
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Student (Hin)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Eng)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Hin)</th>
-                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider whitespace-nowrap text-center w-24">IA Marks</th>
-                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider text-center w-24">ME Marks</th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider whitespace-nowrap text-center w-24">
+                          IA Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 30 / AB</span>
+                        </th>
+                        <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider text-center w-24">
+                          ME Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 70 / AB</span>
+                        </th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-center">Total</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Eng)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Hin)</th>
@@ -379,24 +460,34 @@ const TeacherDashboard = () => {
                           <td className="p-1 border-r border-neutral-200 bg-neutral-50/50">
                             <input 
                               type="text"
-                              value={r.iaMarks} 
+                              value={r.iaMarks}
                               onChange={(e) => handleMarkChange(r._id, 'iaMarks', e.target.value)}
                               disabled={isLocked}
-                              placeholder="—"
-                              className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                isLocked ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
+                              placeholder="0–30 / AB"
+                              title="Enter marks (0–30) or AB for absent"
+                              className={`w-full text-center border p-2 outline-none transition-all font-mono text-sm font-bold ${
+                                isLocked
+                                  ? 'bg-neutral-100 text-neutral-500 border-neutral-300'
+                                  : parseFloat(r.iaMarks) > IA_MAX && r.iaMarks !== 'AB'
+                                  ? 'bg-red-50 border-red-500 text-red-700 focus:ring-1 focus:ring-red-500'
+                                  : 'bg-white border-neutral-300 text-neutral-900 focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
                           <td className="p-1 border-r border-neutral-200 bg-neutral-50/50">
                             <input 
                               type="text"
-                              value={r.meMarks} 
+                              value={r.meMarks}
                               onChange={(e) => handleMarkChange(r._id, 'meMarks', e.target.value)}
                               disabled={isLocked}
-                              placeholder="—"
-                              className={`w-full text-center border border-neutral-300 p-2 outline-none transition-all font-mono text-sm font-bold text-neutral-900 ${
-                                isLocked ? 'bg-neutral-100 text-neutral-500' : 'bg-white focus:border-green-700 focus:ring-1 focus:ring-green-700'
+                              placeholder="0–70 / AB"
+                              title="Enter marks (0–70) or AB for absent"
+                              className={`w-full text-center border p-2 outline-none transition-all font-mono text-sm font-bold ${
+                                isLocked
+                                  ? 'bg-neutral-100 text-neutral-500 border-neutral-300'
+                                  : parseFloat(r.meMarks) > ME_MAX && r.meMarks !== 'AB'
+                                  ? 'bg-red-50 border-red-500 text-red-700 focus:ring-1 focus:ring-red-500'
+                                  : 'bg-white border-neutral-300 text-neutral-900 focus:border-green-700 focus:ring-1 focus:ring-green-700'
                               }`}
                             />
                           </td>
