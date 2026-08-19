@@ -340,7 +340,7 @@ const TeacherDashboard = () => {
                     <tbody className="divide-y divide-neutral-200">
                       {displayBatches.map(batch => (
                         <tr key={batch._id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="p-4 font-bold text-neutral-900 border-r border-neutral-200">{batch.batchName}</td>
+                          <td className="p-4 font-bold text-neutral-900 border-r border-neutral-200">{batch.batchName?.split(' - ')[0] ?? batch.batchName}</td>
                           <td className="p-4 text-neutral-700 font-medium border-r border-neutral-200">{batch.subject}</td>
                           <td className="p-4 text-neutral-600 text-center font-mono border-r border-neutral-200">{batch.studentCount}</td>
                           <td className="p-4 text-neutral-500 text-sm font-mono border-r border-neutral-200">

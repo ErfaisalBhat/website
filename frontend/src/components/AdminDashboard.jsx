@@ -115,6 +115,15 @@ const AdminDashboard = () => {
   };
 
   const handlePhotoUpload = async (studentId, file) => {
+    const MAX_SIZE_KB = 50;
+    if (file.size > MAX_SIZE_KB * 1024) {
+      toast.error(`Photo must be ${MAX_SIZE_KB}KB or smaller. Selected file is ${(file.size / 1024).toFixed(1)}KB.`, {
+        duration: 6000,
+        style: { borderRadius: 0, background: '#b91c1c', color: '#fff' }
+      });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('photo', file);
     
