@@ -59,6 +59,7 @@ const AdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPhotoBatch, setSelectedPhotoBatch] = useState(null);
+  const [publishedFilter, setPublishedFilter] = useState('all');
 
   useEffect(() => {
     fetchTeachers();
@@ -826,12 +827,18 @@ const AdminDashboard = () => {
                     <div className="flex justify-between items-center mb-6">
                       <h2 className="text-2xl font-bold text-gray-800">Published Results</h2>
                       <div className="flex items-center gap-3">
-                        <span className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                        <button
+                          onClick={() => setPublishedFilter(publishedFilter === 'approved' ? 'all' : 'approved')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${publishedFilter === 'approved' ? 'bg-green-600 text-white ring-2 ring-green-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                        >
                           {approvedBatches.filter(b => b.status === 'approved').length} Approved
-                        </span>
-                        <span className="bg-red-100 text-red-700 px-3 py-1.5 rounded-full text-xs font-bold">
+                        </button>
+                        <button
+                          onClick={() => setPublishedFilter(publishedFilter === 'disapproved' ? 'all' : 'disapproved')}
+                          className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${publishedFilter === 'disapproved' ? 'bg-red-600 text-white ring-2 ring-red-400' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                        >
                           {approvedBatches.filter(b => b.status === 'disapproved').length} Disapproved
-                        </span>
+                        </button>
                       </div>
                     </div>
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
@@ -847,7 +854,9 @@ const AdminDashboard = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y">
-                          {approvedBatches.map(batch => (
+                          {approvedBatches
+                            .filter(b => publishedFilter === 'all' || b.status === publishedFilter)
+                            .map(batch => (
                             <tr
                               key={batch._id}
                               className={`transition-colors ${
@@ -857,7 +866,7 @@ const AdminDashboard = () => {
                               }`}
                             >
                               <td className="p-4">
-                                <p className="font-bold text-gray-800">{batch.batchName}</p>
+                                <p className="font-bold text-gray-800">{batch.batchName?.split(' - ')[0] ?? batch.batchName}</p>
                                 <p className="text-xs text-gray-400">{batch.subject}</p>
                               </td>
                               <td className="p-4">
@@ -870,7 +879,12 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-4 text-center text-gray-600">{batch.studentCount}</td>
                               <td className="p-4 text-gray-500">
-                                {batch.approvedAt ? new Date(batch.approvedAt).toLocaleDateString() : '—'}
+                                {(() => {
+                                  const d = batch.status === 'disapproved'
+                                    ? batch.disapprovedAt || batch.approvedAt || batch.submittedAt || batch.createdAt
+                                    : batch.approvedAt || batch.submittedAt || batch.createdAt;
+                                  return d ? new Date(d).toLocaleDateString() : '—';
+                                })()}
                               </td>
                               <td className="p-4 text-center">
                                 {batch.status === 'disapproved' ? (
@@ -912,7 +926,7 @@ const AdminDashboard = () => {
                               </td>
                             </tr>
                           ))}
-                          {approvedBatches.length === 0 && (
+                          {approvedBatches.filter(b => publishedFilter === 'all' || b.status === publishedFilter).length === 0 && (
                             <tr>
                               <td colSpan="6" className="p-12 text-center text-gray-400">No Published Results found</td>
                             </tr>

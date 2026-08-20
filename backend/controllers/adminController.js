@@ -193,7 +193,8 @@ const getApprovedBatches = async (req, res) => {
           createdAt: { $first: '$createdAt' },
           batchSeq: { $first: '$batchSeq' },
           submittedAt: { $first: '$submittedAt' },
-          approvedAt: { $first: '$approvedAt' },
+          approvedAt: { $max: '$approvedAt' },
+          disapprovedAt: { $max: '$disapprovedAt' },
           studentCount: { $sum: 1 }
         }
       },
@@ -266,7 +267,7 @@ const approveBatch = async (req, res) => {
 const disapproveBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
-    await Result.updateMany({ batchId }, { status: 'disapproved' });
+    await Result.updateMany({ batchId }, { status: 'disapproved', disapprovedAt: new Date() });
     res.json({ message: 'Batch disapproved successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error disapproving batch', error: error.message });

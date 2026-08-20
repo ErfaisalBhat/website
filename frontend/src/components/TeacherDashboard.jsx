@@ -329,7 +329,6 @@ const TeacherDashboard = () => {
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-neutral-100 border-b-2 border-neutral-300">
                       <tr>
-                        <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Batch Name</th>
                         <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Subject</th>
                         <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200 text-center">Students</th>
                         <th className="p-4 text-xs font-bold text-neutral-600 uppercase tracking-widest border-r border-neutral-200">Assigned Date</th>
@@ -340,7 +339,6 @@ const TeacherDashboard = () => {
                     <tbody className="divide-y divide-neutral-200">
                       {displayBatches.map(batch => (
                         <tr key={batch._id} className="hover:bg-neutral-50 transition-colors">
-                          <td className="p-4 font-bold text-neutral-900 border-r border-neutral-200">{batch.batchName?.split(' - ')[0] ?? batch.batchName}</td>
                           <td className="p-4 text-neutral-700 font-medium border-r border-neutral-200">{batch.subject}</td>
                           <td className="p-4 text-neutral-600 text-center font-mono border-r border-neutral-200">{batch.studentCount}</td>
                           <td className="p-4 text-neutral-500 text-sm font-mono border-r border-neutral-200">
@@ -377,7 +375,7 @@ const TeacherDashboard = () => {
                       ))}
                       {displayBatches.length === 0 && (
                         <tr>
-                          <td colSpan="6" className="p-16 text-center text-neutral-400 font-medium tracking-wide">
+                          <td colSpan="5" className="p-16 text-center text-neutral-400 font-medium tracking-wide">
                             No {activeTab === 'batches' ? 'assigned' : 'approved'} batches found.
                           </td>
                         </tr>
