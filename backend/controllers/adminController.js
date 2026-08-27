@@ -182,19 +182,14 @@ const getPendingResults = async (req, res) => {
 const getApprovedBatches = async (req, res) => {
   try {
     const batches = await Result.aggregate([
-      { $match: { status: { $in: ['approved', 'disapproved'] } } },
+      { $match: { status: 'approved' } },
       {
         $group: {
           _id: '$batchId',
           batchName: { $first: '$batchName' },
           subject: { $first: '$subject' },
-          status: { $first: '$status' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
-          batchSeq: { $first: '$batchSeq' },
-          submittedAt: { $first: '$submittedAt' },
-          approvedAt: { $max: '$approvedAt' },
-          disapprovedAt: { $max: '$disapprovedAt' },
           studentCount: { $sum: 1 }
         }
       },
@@ -219,12 +214,12 @@ const deleteApprovedBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
     
-    // Find all results in this batch (approved or disapproved) to get student IDs
-    const results = await Result.find({ batchId, status: { $in: ['approved', 'disapproved'] } });
+    // Find all results in this batch to get student IDs
+    const results = await Result.find({ batchId, status: 'approved' });
     const studentIds = results.map(r => r.student);
 
-    // Delete all results in this batch
-    await Result.deleteMany({ batchId, status: { $in: ['approved', 'disapproved'] } });
+    // Delete all results in this batch first
+    await Result.deleteMany({ batchId, status: 'approved' });
     
     // Delete the associated file upload
     await FileUpload.deleteOne({ batchId });
@@ -239,9 +234,9 @@ const deleteApprovedBatch = async (req, res) => {
       }
     }
 
-    res.json({ message: 'Batch and associated student records deleted successfully' });
+    res.json({ message: 'Approved batch and orphaned student records deleted successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting batch', error: error.message });
+    res.status(500).json({ message: 'Error deleting approved batch', error: error.message });
   }
 };
 
@@ -285,30 +280,11 @@ const getTeachers = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    // Find all student IDs that have at least one non-disapproved result
-    const activeStudentIds = await Result.distinct('student', { status: { $ne: 'disapproved' } });
-    const approvedStudentIds = await Result.distinct('student', { status: 'approved' });
-
-    const students = await User.find({ 
-                                 role: 'student',
-                                 _id: { $in: activeStudentIds }
-                               })
+    const students = await User.find({ role: 'student' })
                                .select('name email rollNo profileImageId')
                                .collation({ locale: "en_US", numericOrdering: true })
                                .sort({ rollNo: 1, name: 1 });
-                               
-    const approvedSet = new Set(approvedStudentIds.map(id => id?.toString()));
-
-    const formattedStudents = students.map(s => ({
-      _id: s._id,
-      name: s.name,
-      email: s.email,
-      rollNo: s.rollNo || s.email.split('@')[0],
-      profileImageId: s.profileImageId,
-      hasApprovedResult: approvedSet.has(s._id.toString())
-    }));
-                               
-    res.json(formattedStudents);
+    res.json(students);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching students', error: error.message });
   }
@@ -444,10 +420,17 @@ const uploadStudentPhoto = async (req, res) => {
     
     if (!req.file) {
       console.log('Error: No file in request');
-      return res.status(201).json({ message: 'No image uploaded' });
+      return res.status(400).json({ message: 'No image uploaded' });
     }
 
-    console.log('Cloud Name (at upload time):', process.env.CLOUDINARY_CLOUD_NAME);
+    // Configure Cloudinary
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+
+    console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME);
 
     // Convert buffer to base64
     const fileBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
@@ -474,7 +457,7 @@ const uploadStudentPhoto = async (req, res) => {
 
     if (!updatedUser) {
       console.log('Error: Student not found in DB');
-      return res.status(201).json({ message: 'Student not found in database' });
+      return res.status(404).json({ message: 'Student not found in database' });
     }
 
     console.log('Database updated successfully');

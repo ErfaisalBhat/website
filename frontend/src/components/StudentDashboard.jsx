@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import CertificateTemplate from './CertificateTemplate';
 import StudentHeader from './StudentHeader';
+import html2pdf from 'html2pdf.js';
 import { useReactToPrint } from 'react-to-print';
 import ResultSearch from './ResultDec';
 
@@ -20,10 +21,31 @@ const StudentDashboard = () => {
 
   const handlePrintCertificate = useReactToPrint({
     contentRef: certificateRef,
-    documentTitle: `${selectedResult?.rollNo || 'Certificate'}`,
-    onAfterPrint: () => console.log('Print complete'),
-    pageStyle: '@page { size: A4; margin: 0; } @media print { body { margin: 0; } }',
+    documentTitle: `${selectedResult?.rollNo || 'Certificate'}_Certificate`,
   });
+
+  const handleDownloadPDF = async () => {
+    const element = certificateRef.current;
+    const opt = {
+      margin: 0,
+      filename: `${selectedResult?.rollNo || 'Certificate'}_Certificate.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        letterRendering: true,
+        allowTaint: true
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error("PDF Gen Error:", err);
+      alert("Failed to generate PDF. Please try again.");
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('studentToken');
@@ -266,8 +288,14 @@ const StudentDashboard = () => {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
               <h3 className="text-lg font-bold text-gray-800">Certificate Preview</h3>
               <div className="flex gap-3">
-
-                <button onClick={() => handlePrintCertificate()}
+                <button onClick={handlePrintCertificate}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-colors text-sm">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print
+                </button>
+                <button onClick={handleDownloadPDF}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm transition-colors text-sm">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
