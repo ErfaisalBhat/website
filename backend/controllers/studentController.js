@@ -10,11 +10,16 @@ const verifyStudent = async (req, res) => {
 
     console.log('Searching for student with:', { rollNo, dateOfBirth });
 
-    const studentResult = await Result.findOne({ rollNo: rollNo, status: 'approved' })
+    // Find student result with matching credentials, grabbing the most recent upload
+    const studentResult = await Result.findOne({ rollNo: rollNo })
       .sort({ createdAt: -1 })
       .select("status rollNo enrolmentNo candidateNameEnglish dateOfBirth");
 
-    console.log('Raw student result:', studentResult);
+    if (studentResult) {
+      console.log('DB value:', studentResult.dateOfBirth);
+      console.log('Received value:', req.body.dateOfBirth);
+      console.log('Types:', typeof studentResult.dateOfBirth, typeof req.body.dateOfBirth);
+    }
 
     if (studentResult) {
       console.log('DB value:', studentResult.dateOfBirth);
@@ -32,40 +37,60 @@ const verifyStudent = async (req, res) => {
       });
     }
 
+    // Check if DOB is completely missing in the database
+    if (!studentResult.dateOfBirth || studentResult.dateOfBirth.trim() === '') {
+      return res.status(401).json({ 
+        message: 'Date of birth is not registered in our system for this Roll Number. Please contact the administration to update your records.' 
+      });
+    }
+
+    // Helper to robustly standardize dates to YYYY-MM-DD
     const standardizeDate = (d) => {
       if (!d) return '';
       const str = d.toString().trim();
-
+      
+      // Try YYYY-MM-DD or YYYY/MM/DD
       let match = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
       if (match) {
         return `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
       }
 
+      // Try DD-MM-YYYY or DD/MM/YYYY (This handles the frontend's explicit formatting)
       match = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
       if (match) {
         return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
       }
 
+      // Try MM-DD-YYYY or MM/DD/YYYY (US format fallback)
+      match = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+      if (match) {
+        // Assume first digits might be month if greater than 12
+         return `${match[3]}-${match[1].padStart(2, '0')}-${match[2].padStart(2, '0')}`;
+      }
+
+      // Fallback to JS Date parsing
       const dt = new Date(str);
       if (!isNaN(dt.getTime())) {
         return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
       }
-
+      
       return str;
     };
 
-    const stdInput = standardizeDate(dateOfBirth);
-    const stdStored = standardizeDate(studentResult.dateOfBirth);
+    const stdInputDate = standardizeDate(dateOfBirth);
+    const stdStoredDate = standardizeDate(studentResult.dateOfBirth);
 
     console.log('Comparing dates:', {
       input: dateOfBirth,
       stored: studentResult.dateOfBirth,
-      stdInput,
-      stdStored
+      stdInput: stdInputDate,
+      stdStored: stdStoredDate
     });
 
-    if (stdInput !== stdStored) {
-      return res.status(401).json({ message: 'Invalid date of birth' });
+    if (stdInputDate !== stdStoredDate && dateOfBirth !== studentResult.dateOfBirth) {
+      return res.status(401).json({ 
+        message: 'Invalid date of birth' 
+      });
     }
 
     const token = jwt.sign(
@@ -184,13 +209,27 @@ const verifyCertificate = async (req, res) => {
       return res.status(400).json({ message: 'Certificate number is required' });
     }
 
-    const result = await Result.findOne({
+    let result = await Result.findOne({
       certificateNo,
-      status: 'approved'
+      status: 'approved' 
     }).populate('student', 'profileImageId');
 
     if (!result) {
-      return res.status(404).json({ message: 'Invalid certificate number' });
+      const DiplomaCertificate = require('../models/DiplomaCertificate');
+      const diploma = await DiplomaCertificate.findOne({ certificateNo });
+      if (!diploma) {
+        return res.status(404).json({ message: 'Invalid certificate number' });
+      }
+      return res.json({
+        studentName: diploma.candidateName,
+        rollNo: diploma.rollNo,
+        enrolmentNo: diploma.marksData?.enrolmentNo || 'N/A',
+        subject: diploma.courseName,
+        courseName: diploma.courseName,
+        issuedAt: diploma.issuedAt,
+        status: 'Verified (Diploma)',
+        profileImageId: null
+      });
     }
 
     res.json({

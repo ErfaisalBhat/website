@@ -1,12 +1,23 @@
 const { google } = require('googleapis');
 const fs = require('fs');
 const multer = require('multer');
-const credentials = require('../uploads/credentials.json'); // Move credentials to a config folder
+let credentials = null;
+try {
+  credentials = require('../uploads/credentials.json');
+} catch (e) {
+  console.warn("⚠️ Warning: Google Drive credentials.json not found in uploads directory. Google Drive features will not work.");
+}
 
-const client_id = credentials.web.client_id;
-const client_secret = credentials.web.client_secret;
-const redirect_uris = credentials.web.redirect_uris;
-const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+const client_id = credentials?.web?.client_id || '';
+const client_secret = credentials?.web?.client_secret || '';
+const redirect_uris = credentials?.web?.redirect_uris || [''];
+const oAuth2Client = (client_id && client_secret) 
+  ? new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]) 
+  : {
+      setCredentials: () => {},
+      generateAuthUrl: () => { throw new Error('Google Drive integration is not configured.'); },
+      getToken: (code, cb) => cb(new Error('Google Drive integration is not configured.')),
+    };
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive',

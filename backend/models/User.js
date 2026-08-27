@@ -25,10 +25,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  rollNo: {
-    type: String,
-    default: ''
-  },
   profileImageId: {
     type: String,
     default: ''

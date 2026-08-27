@@ -66,6 +66,8 @@ const processCSV = (buffer) => {
 };
 
 const processExcel = (buffer) => {
+  // Removed cellDates: true to prevent xlsx from shifting dates backwards via local timezones.
+  // We want the raw serial numbers so our custom UTC math can parse them accurately.
   const workbook = xlsx.read(buffer);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
