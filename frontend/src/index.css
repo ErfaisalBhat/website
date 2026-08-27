@@ -19,24 +19,13 @@
 @tailwind utilities;
 
 @media print {
-  body * {
-    visibility: hidden;
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  .certificate-container, .certificate-container * {
-    visibility: visible;
-  }
-  .certificate-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 210mm;
-    height: 297mm;
-  }
-  @page {
-    size: A4;
-    margin: 0;
-  }
-} 
+}
+
+ 
 
 .font-old-english {
   font-family: 'Old English Text MT', serif;

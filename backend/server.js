@@ -14,6 +14,7 @@ const teacherRoutes = require('./routes/teacherRoutes');
 const studentRoutes = require('./routes/studentRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const driveRoutes = require('./routes/driveRoutes');
+const diplomaRoutes = require('./routes/diplomaRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -74,6 +75,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/drive', driveRoutes);
+app.use('/api/diplomas', diplomaRoutes);
 
 // ✅ **Basic Route**
 app.get('/', (req, res) => {

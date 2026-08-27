@@ -184,13 +184,27 @@ const verifyCertificate = async (req, res) => {
       return res.status(400).json({ message: 'Certificate number is required' });
     }
 
-    const result = await Result.findOne({
+    let result = await Result.findOne({
       certificateNo,
       status: 'approved'
     }).populate('student', 'profileImageId');
 
     if (!result) {
-      return res.status(404).json({ message: 'Invalid certificate number' });
+      const DiplomaCertificate = require('../models/DiplomaCertificate');
+      const diploma = await DiplomaCertificate.findOne({ certificateNo });
+      if (!diploma) {
+        return res.status(404).json({ message: 'Invalid certificate number' });
+      }
+      return res.json({
+        studentName: diploma.candidateName,
+        rollNo: diploma.rollNo,
+        enrolmentNo: diploma.marksData?.enrolmentNo || 'N/A',
+        subject: diploma.courseName,
+        courseName: diploma.courseName,
+        issuedAt: diploma.issuedAt,
+        status: 'Verified (Diploma)',
+        profileImageId: null
+      });
     }
 
     res.json({

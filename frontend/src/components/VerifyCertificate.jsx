@@ -86,7 +86,7 @@ const VerifyCertificate = () => {
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
-                  placeholder="Enter Certificate Number (e.g. VMI-123456789-123)"
+                  placeholder="Enter Certificate Number"
                   value={certNo}
                   onChange={(e) => setCertNo(e.target.value)}
                   className="flex-grow p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"

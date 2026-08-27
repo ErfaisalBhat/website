@@ -1,0 +1,11 @@
+id,name,email,age,city,country,phone,signup_date,status
+1,Alice Johnson,alice.johnson@email.com,28,New York,USA,+1-555-0101,2024-01-15,active
+2,Bob Smith,bob.smith@email.com,34,London,UK,+44-20-7946-0958,2024-02-20,active
+3,Carol White,carol.white@email.com,22,Toronto,Canada,+1-416-555-0192,2024-03-05,inactive
+4,David Brown,david.brown@email.com,45,Sydney,Australia,+61-2-5550-1234,2024-03-18,active
+5,Emma Davis,emma.davis@email.com,31,Berlin,Germany,+49-30-12345678,2024-04-02,active
+6,Frank Miller,frank.miller@email.com,27,Paris,France,+33-1-23-45-67-89,2024-04-14,pending
+7,Grace Wilson,grace.wilson@email.com,39,Tokyo,Japan,+81-3-1234-5678,2024-05-01,active
+8,Henry Moore,henry.moore@email.com,52,Mumbai,India,+91-22-12345678,2024-05-22,inactive
+9,Isla Taylor,isla.taylor@email.com,26,Dubai,UAE,+971-4-123-4567,2024-06-08,active
+10,Jack Anderson,jack.anderson@email.com,33,Singapore,Singapore,+65-6123-4567,2024-06-30,active

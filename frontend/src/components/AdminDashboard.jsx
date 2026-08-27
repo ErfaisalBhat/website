@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Header from './Header';
+import DiplomaCertificateTemplate from './DiplomaCertificateTemplate';
 import toast from 'react-hot-toast';
+import { useReactToPrint } from 'react-to-print';
 import { 
   UsersIcon, 
   CloudArrowUpIcon, 
@@ -61,13 +63,44 @@ const AdminDashboard = () => {
   const [selectedPhotoBatch, setSelectedPhotoBatch] = useState(null);
   const [publishedFilter, setPublishedFilter] = useState('all');
 
+  // Diploma flow states
+  const [activeFlow, setActiveFlow] = useState('results');
+  const [diplomaFile, setDiplomaFile] = useState(null);
+  const [diplomasList, setDiplomasList] = useState([]);
+  const [diplomaUploadResult, setDiplomaUploadResult] = useState(null);
+  const [selectedDiploma, setSelectedDiploma] = useState(null);
+  const [activeDiplomaTab, setActiveDiplomaTab] = useState('upload_diploma');
+
+  const [activeSignature, setActiveSignature] = useState(null);
+  const [signatureFile, setSignatureFile] = useState(null);
+  const [signatoryLabel, setSignatoryLabel] = useState('O.S.D. (Examination)');
+
   useEffect(() => {
     fetchTeachers();
     fetchDraftBatches();
     fetchPendingBatches();
     fetchApprovedBatches();
     fetchStudents();
+    fetchDiplomas();
+    fetchActiveSignature();
   }, []);
+
+  const fetchActiveSignature = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/active-signature`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActiveSignature(data);
+        if (data) {
+          setSignatoryLabel(data.signatoryLabel);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     import('socket.io-client').then(({ io }) => {
@@ -78,10 +111,136 @@ const AdminDashboard = () => {
         fetchPendingBatches();
         fetchApprovedBatches();
         fetchStudents();
+        fetchDiplomas();
+        fetchActiveSignature();
       });
       return () => socket.disconnect();
     });
   }, []);
+
+  const fetchDiplomas = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/list`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDiplomasList(data);
+      }
+    } catch (err) {
+      toast.error('Failed to fetch diploma certificates');
+    }
+  };
+
+  const handleDiplomaUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!diplomaFile) {
+      toast.error('Please select a file');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', diplomaFile);
+
+    const loadingToast = toast.loading('Uploading and processing diplomas...');
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+        body: formData
+      });
+      const data = await res.json();
+      toast.dismiss(loadingToast);
+      if (res.ok) {
+        toast.success(data.message || 'Upload processed successfully');
+        setDiplomaUploadResult(data);
+        setDiplomaFile(null);
+        fetchDiplomas();
+      } else {
+        toast.error(data.message || 'Upload failed');
+      }
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error('Failed to upload file');
+    }
+  };
+
+  const handleDeleteDiploma = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this diploma certificate?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (res.ok) {
+        toast.success('Certificate deleted');
+        fetchDiplomas();
+      } else {
+        const data = await res.json();
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error('Delete failed');
+    }
+  };
+
+  const handleSignatureUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!signatureFile) {
+      toast.error('Please select a PNG file');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', signatureFile);
+    formData.append('signatoryLabel', signatoryLabel);
+
+    const loadingToast = toast.loading('Uploading signature...');
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/signature`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+        body: formData
+      });
+      const data = await res.json();
+      toast.dismiss(loadingToast);
+      if (res.ok) {
+        toast.success('Signature uploaded successfully');
+        setActiveSignature(data);
+        setSignatureFile(null);
+      } else {
+        toast.error(data.message || 'Signature upload failed');
+      }
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      toast.error('Failed to upload signature');
+    }
+  };
+
+  const handleDeactivateSignature = async (id) => {
+    if (!window.confirm('Are you sure you want to deactivate this signature?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/diplomas/signature/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (res.ok) {
+        toast.success('Signature deactivated');
+        setActiveSignature(null);
+      } else {
+        const data = await res.json();
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error('Failed to deactivate signature');
+    }
+  };
+
+  const diplomaCertRef = useRef();
+
+  const handlePrintDiploma = useReactToPrint({
+    contentRef: diplomaCertRef,
+    documentTitle: `${selectedDiploma?.rollNo || 'Diploma'}_Diploma`,
+    pageStyle: '@page { size: A4; margin: 0; } @media print { body { margin: 0; } }',
+  });
 
   const fetchStudents = async () => {
     try {
@@ -486,50 +645,95 @@ const AdminDashboard = () => {
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
       {/* Top Navbar */}
       <nav className="bg-gray-900 text-white flex items-center justify-between px-6 py-3 z-40 shadow-md flex-wrap gap-2">
-        <div className="flex items-center gap-6 flex-wrap">
           <h1 className="text-lg font-bold text-white whitespace-nowrap">Admin Panel</h1>
-          <div className="flex items-center gap-1 flex-wrap">
-            <NavItem
-              icon={CloudArrowUpIcon}
-              label="Upload Student Records"
-              active={activeTab === 'upload'}
-              onClick={() => setActiveTab('upload')}
-            />
-            <NavItem
-              icon={DocumentTextIcon}
-              label="Marks Submission"
-              active={activeTab === 'drafts'}
-              onClick={() => setActiveTab('drafts')}
-              count={draftBatches.length}
-            />
-            <NavItem
-              icon={PhotoIcon}
-              label="Student Photos"
-              active={activeTab === 'photos'}
-              onClick={() => setActiveTab('photos')}
-            />
-            <NavItem
-              icon={CheckBadgeIcon}
-              label="Result Approval"
-              active={activeTab === 'pending'}
-              onClick={() => setActiveTab('pending')}
-              count={pendingBatches.length}
-            />
-            <NavItem
-              icon={UsersIcon}
-              label="Manage Teachers"
-              active={activeTab === 'teachers'}
-              onClick={() => setActiveTab('teachers')}
-            />
-            <NavItem
-              icon={CheckBadgeIcon}
-              label="Published Results"
-              active={activeTab === 'approved'}
-              onClick={() => setActiveTab('approved')}
-              count={approvedBatches.length}
-            />
+          
+          {/* Segmented Flow Toggle */}
+          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
+            <button
+              onClick={() => setActiveFlow('results')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                activeFlow === 'results' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Student Results
+            </button>
+            <button
+              onClick={() => setActiveFlow('diplomas')}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                activeFlow === 'diplomas' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Diploma Certificates
+            </button>
           </div>
-        </div>
+
+          <div className="flex items-center gap-1 flex-wrap">
+            {activeFlow === 'results' ? (
+              <>
+                <NavItem
+                  icon={CloudArrowUpIcon}
+                  label="Upload Student Records"
+                  active={activeTab === 'upload'}
+                  onClick={() => setActiveTab('upload')}
+                />
+                <NavItem
+                  icon={DocumentTextIcon}
+                  label="Marks Submission"
+                  active={activeTab === 'drafts'}
+                  onClick={() => setActiveTab('drafts')}
+                  count={draftBatches.length}
+                />
+                <NavItem
+                  icon={PhotoIcon}
+                  label="Student Photos"
+                  active={activeTab === 'photos'}
+                  onClick={() => setActiveTab('photos')}
+                />
+                <NavItem
+                  icon={CheckBadgeIcon}
+                  label="Result Approval"
+                  active={activeTab === 'pending'}
+                  onClick={() => setActiveTab('pending')}
+                  count={pendingBatches.length}
+                />
+                <NavItem
+                  icon={UsersIcon}
+                  label="Manage Teachers"
+                  active={activeTab === 'teachers'}
+                  onClick={() => setActiveTab('teachers')}
+                />
+                <NavItem
+                  icon={CheckBadgeIcon}
+                  label="Published Results"
+                  active={activeTab === 'approved'}
+                  onClick={() => setActiveTab('approved')}
+                  count={approvedBatches.length}
+                />
+              </>
+            ) : (
+              <>
+                <NavItem
+                  icon={CloudArrowUpIcon}
+                  label="Upload Diploma CSV"
+                  active={activeDiplomaTab === 'upload_diploma'}
+                  onClick={() => setActiveDiplomaTab('upload_diploma')}
+                />
+                <NavItem
+                  icon={CheckBadgeIcon}
+                  label="Diploma Certificates"
+                  active={activeDiplomaTab === 'list_diploma'}
+                  onClick={() => setActiveDiplomaTab('list_diploma')}
+                  count={diplomasList.length}
+                />
+                <NavItem
+                  icon={DocumentTextIcon}
+                  label="Authorized Signature"
+                  active={activeDiplomaTab === 'signature_settings'}
+                  onClick={() => setActiveDiplomaTab('signature_settings')}
+                />
+              </>
+            )}
+          </div>
 
         <button
           onClick={logout}
@@ -545,7 +749,9 @@ const AdminDashboard = () => {
         <Header />
         <div className="flex-1 overflow-auto p-8">
           <div className="max-w-7xl mx-auto">
-            {activeTab === 'upload' && (
+            {activeFlow === 'results' ? (
+              <>
+                {activeTab === 'upload' && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border">
                 <div className="flex justify-between items-start mb-6">
                   <div>
@@ -1169,6 +1375,204 @@ const AdminDashboard = () => {
                 </div>
               </div>
             )}
+              </>
+            ) : (
+              <>
+                {activeDiplomaTab === 'upload_diploma' && (
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Upload Diploma Certificates</h2>
+                        <p className="text-gray-500">Create new verified diplomas by uploading a CSV file.</p>
+                      </div>
+                    </div>
+                    <form onSubmit={handleDiplomaUploadSubmit} className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">CSV File</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                          <input 
+                            type="file" 
+                            onChange={(e) => setDiplomaFile(e.target.files[0])} 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            accept=".csv" 
+                          />
+                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm text-gray-600">
+                            {diplomaFile ? <span className="text-blue-600 font-bold">{diplomaFile.name}</span> : "Click or drag to upload Diploma CSV"}
+                          </p>
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg">
+                        Upload Diploma Records
+                      </button>
+                    </form>
+
+                    {diplomaUploadResult && (
+                      <div className="mt-8 p-6 bg-gray-50 border rounded-xl">
+                        <h3 className="text-lg font-bold text-gray-800 mb-2">Upload Report</h3>
+                        <div className="flex gap-4 mb-4">
+                          <span className="bg-green-100 text-green-800 px-3 py-1 rounded text-xs font-bold">Processed: {diplomaUploadResult.processedCount}</span>
+                          <span className="bg-red-100 text-red-800 px-3 py-1 rounded text-xs font-bold">Failed: {diplomaUploadResult.failedCount}</span>
+                        </div>
+                        {diplomaUploadResult.errors && diplomaUploadResult.errors.length > 0 && (
+                          <div className="max-h-60 overflow-y-auto border border-red-200 bg-red-50 rounded-xl p-4 space-y-2">
+                            {diplomaUploadResult.errors.map((err, idx) => (
+                              <p key={idx} className="text-xs text-red-700 font-medium">
+                                <b>Row {err.row} (Roll No: {err.rollNo}):</b> {err.error}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeDiplomaTab === 'list_diploma' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Diploma Certificates</h2>
+                        <p className="text-gray-500">Manage and preview generated student diplomas.</p>
+                      </div>
+                      <a 
+                        href={`${API_URL}/api/diplomas/bulk-download?t=${Date.now()}`}
+                        download
+                        className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md flex items-center gap-2 text-sm border"
+                      >
+                        <CloudArrowUpIcon className="w-5 h-5" />
+                        Download Bulk ZIP
+                      </a>
+                    </div>
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
+                      <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b">
+                          <tr>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Roll Number</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Student Name</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Course Name</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Semester</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Certificate No</th>
+                            <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {diplomasList.map((cert) => (
+                            <tr key={cert._id} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4 font-mono font-bold text-sm text-gray-800">{cert.rollNo}</td>
+                              <td className="p-4 font-bold text-gray-800">{cert.candidateName}</td>
+                              <td className="p-4 text-gray-600 text-sm">{cert.courseName}</td>
+                              <td className="p-4 text-gray-600 text-sm">{cert.semester}</td>
+                              <td className="p-4 font-mono text-xs text-blue-600 font-bold">{cert.certificateNo}</td>
+                              <td className="p-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => setSelectedDiploma(cert)}
+                                    className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
+                                    title="Preview Certificate"
+                                  >
+                                    <EyeIcon className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDiploma(cert._id)}
+                                    className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
+                                    title="Delete Certificate"
+                                  >
+                                    <TrashIcon className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                          {diplomasList.length === 0 && (
+                            <tr>
+                              <td colSpan="6" className="p-12 text-center text-gray-400">No Diploma Certificates generated yet.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeDiplomaTab === 'signature_settings' && (
+                  <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-2xl">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Authorized Signature</h2>
+                    <p className="text-gray-500 mb-8">Manage the signature rendered on all diploma certificates.</p>
+
+                    {/* Current Signature Display */}
+                    <div className="mb-8 p-6 bg-gray-50 border rounded-2xl">
+                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Active Signature</h3>
+                      {activeSignature ? (
+                        <div className="space-y-4">
+                          <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-64 shadow-inner">
+                            <img 
+                              src={`${API_URL}/${activeSignature.filePath.replace(/^uploads\//, '')}`} 
+                              alt="Active Signature" 
+                              className="max-h-full max-w-full object-contain" 
+                            />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-800">Designation: <span className="text-gray-600 font-normal">{activeSignature.signatoryLabel}</span></p>
+                            <p className="text-xs text-gray-400">Uploaded at: {new Date(activeSignature.uploadedAt).toLocaleString()}</p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => handleDeactivateSignature(activeSignature._id)}
+                            className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors"
+                          >
+                            Deactivate Signature
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-gray-400 text-sm">
+                          No active signature uploaded. Certs will display empty space.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Signature Upload Form */}
+                    <form onSubmit={handleSignatureUploadSubmit} className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload PNG Signature</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                          <input 
+                            type="file" 
+                            onChange={(e) => setSignatureFile(e.target.files[0])} 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            accept="image/png" 
+                          />
+                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm text-gray-600">
+                            {signatureFile ? (
+                              <span className="text-blue-600 font-bold">{signatureFile.name}</span>
+                            ) : (
+                              "Click or drag to select a PNG signature file"
+                            )}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-2">Only transparent background PNG images are recommended</p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Signatory Designation / Label</label>
+                        <input 
+                          type="text" 
+                          value={signatoryLabel}
+                          onChange={(e) => setSignatoryLabel(e.target.value)}
+                          placeholder="e.g. O.S.D. (Examination)"
+                          className="w-full border p-3 rounded-xl bg-gray-50 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all"
+                        />
+                      </div>
+
+                      <button type="submit" className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-md">
+                        {activeSignature ? "Replace Active Signature" : "Upload Active Signature"}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       </main>
@@ -1389,6 +1793,31 @@ const AdminDashboard = () => {
             <div className="flex gap-3">
               <button onClick={handleChangePassword} className="flex-1 bg-blue-600 text-white py-3.5 rounded-xl font-bold hover:bg-blue-700">Update Password</button>
               <button onClick={() => setIsPasswordModalOpen(false)} className="flex-1 bg-gray-100 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-200">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedDiploma && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[70] overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-h-[95vh] overflow-y-auto mx-auto shadow-2xl" style={{ maxWidth: 'min(95vw, 1000px)' }}>
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <h3 className="text-lg font-bold text-gray-800">Diploma Preview</h3>
+              <div className="flex gap-3">
+                <button onClick={() => handlePrintDiploma()}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm transition-colors text-sm font-bold">
+                  Print Preview
+                </button>
+                <button onClick={() => setSelectedDiploma(null)}
+                  className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm font-bold">
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="flex justify-center bg-gray-50 overflow-auto p-4">
+              <div ref={diplomaCertRef} className="bg-white">
+                <DiplomaCertificateTemplate certificateData={selectedDiploma} />
+              </div>
             </div>
           </div>
         </div>
