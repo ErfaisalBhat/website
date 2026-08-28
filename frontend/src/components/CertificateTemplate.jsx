@@ -24,6 +24,14 @@ const CertificateTemplate = ({ certificateData }) => {
     ? `${currentOrigin}/verify?certNo=${certificateNo}`
     : `${currentOrigin}/verify`;
 
+  const authSigImage = certificateData?.authSignatureImage 
+    ? `${API_URL}/${certificateData.authSignatureImage.replace(/^uploads\//, '')}` 
+    : null;
+    
+  const controllerSigImage = certificateData?.controllerSignatureImage 
+    ? `${API_URL}/${certificateData.controllerSignatureImage.replace(/^uploads\//, '')}` 
+    : null;
+
   /* ── Font shorthand objects ── */
   const kokila = { fontFamily: "'Kokila','Noto Sans Devanagari',serif" };
   const arya   = { fontFamily: "'Arya','Noto Sans Devanagari',sans-serif", fontWeight: 'bold' };
@@ -287,7 +295,7 @@ const CertificateTemplate = ({ certificateData }) => {
               {/* Left — Controller of Examination */}
               <div style={{ textAlign:'center', width:'190px' }}>
                 <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                  <img src="/Signature.png" alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
+                  <img src={controllerSigImage || "/Signature.png"} alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
                 </div>
                 <div style={hrStyle} />
                 <div style={{ ...kokila, fontSize:'12.5px', marginTop:'2px' }}>परीक्षा नियंत्रक</div>
@@ -318,7 +326,7 @@ const CertificateTemplate = ({ certificateData }) => {
               {/* Right — Verifying Authority */}
               <div style={{ textAlign:'center', width:'190px' }}>
                 <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                  <img src="/BKG Signature.png" alt="Verifying Authority" style={{ height:'48px', objectFit:'contain' }} />
+                  <img src={authSigImage || "/BKG Signature.png"} alt="Verifying Authority" style={{ height:'48px', objectFit:'contain' }} />
                 </div>
                 <div style={hrStyle} />
                 <div style={{ ...kokila, fontSize:'12.5px', marginTop:'2px' }}>सत्यापन प्राधिकारी</div>

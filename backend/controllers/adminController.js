@@ -500,6 +500,80 @@ const uploadStudentPhoto = async (req, res) => {
   }
 };
 
+const CertificateSignature = require('../models/CertificateSignature');
+const path = require('path');
+const fs = require('fs');
+
+const uploadCertificateSignature = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const { role } = req.body;
+    if (!role || !['Verifying Authority', 'Controller of Examination'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid or missing signature role' });
+    }
+
+    const mimeType = req.file.mimetype;
+    const extension = path.extname(req.file.originalname).toLowerCase();
+
+    if (mimeType !== 'image/png' || extension !== '.png') {
+      return res.status(400).json({ message: 'Only PNG images are allowed' });
+    }
+
+    const filename = `cert-sig-${role.replace(/\s+/g, '')}-${Date.now()}.png`;
+    const uploadPath = path.join(__dirname, '../uploads', filename);
+
+    const uploadsDir = path.dirname(uploadPath);
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    fs.writeFileSync(uploadPath, req.file.buffer);
+    const filePath = `uploads/${filename}`;
+
+    // Deactivate previous signature for this specific role
+    await CertificateSignature.updateMany({ isActive: true, role }, { isActive: false });
+
+    const newSignature = await CertificateSignature.create({
+      filePath: filePath,
+      role: role,
+      signatoryLabel: role,
+      isActive: true,
+      uploadedBy: req.user._id
+    });
+
+    res.status(200).json(newSignature);
+  } catch (error) {
+    console.error('Certificate Signature Upload Error:', error);
+    res.status(500).json({ message: 'Signature upload failed', error: error.message });
+  }
+};
+
+const getActiveCertificateSignature = async (req, res) => {
+  try {
+    const activeSigs = await CertificateSignature.find({ isActive: true });
+    res.status(200).json(activeSigs);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch signature', error: error.message });
+  }
+};
+
+const deactivateCertificateSignature = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sig = await CertificateSignature.findById(id);
+    if (sig) {
+      sig.isActive = false;
+      await sig.save();
+    }
+    res.status(200).json({ message: 'Signature deactivated' });
+  } catch (error) {
+    res.status(500).json({ message: 'Deactivation failed', error: error.message });
+  }
+};
+
 module.exports = {
   uploadStudents,
   assignBatch,
@@ -517,5 +591,8 @@ module.exports = {
   deleteDraftBatch,
   deleteApprovedBatch,
   updateBatchResults,
-  uploadStudentPhoto
+  uploadStudentPhoto,
+  uploadCertificateSignature,
+  getActiveCertificateSignature,
+  deactivateCertificateSignature
 };

@@ -18,7 +18,10 @@ const {
   deleteDraftBatch,
   deleteApprovedBatch,
   updateBatchResults,
-  uploadStudentPhoto
+  uploadStudentPhoto,
+  uploadCertificateSignature,
+  getActiveCertificateSignature,
+  deactivateCertificateSignature
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -47,5 +50,10 @@ router.post('/disapprove-batch/:batchId', disapproveBatch);
 router.post('/add-teacher', addTeacher);
 router.delete('/teacher/:teacherId', removeTeacher);
 router.put('/teacher-password/:teacherId', changeTeacherPassword);
+
+// Signature management for certificates
+router.post('/signature', upload.single('file'), uploadCertificateSignature);
+router.get('/signature', getActiveCertificateSignature);
+router.delete('/signature/:id', deactivateCertificateSignature);
 
 module.exports = router;

@@ -71,6 +71,11 @@ const AdminDashboard = () => {
   const [selectedDiploma, setSelectedDiploma] = useState(null);
   const [activeDiplomaTab, setActiveDiplomaTab] = useState('upload_diploma');
 
+  const [activeResultUploadTab, setActiveResultUploadTab] = useState('upload_records');
+  const [activeCertSignatures, setActiveCertSignatures] = useState([]);
+  const [certSignatureFile, setCertSignatureFile] = useState(null);
+  const [certSignatureRole, setCertSignatureRole] = useState('Verifying Authority');
+
   const [activeSignature, setActiveSignature] = useState(null);
   const [signatureFile, setSignatureFile] = useState(null);
   const [signatoryLabel, setSignatoryLabel] = useState('O.S.D. (Examination)');
@@ -83,7 +88,22 @@ const AdminDashboard = () => {
     fetchStudents();
     fetchDiplomas();
     fetchActiveSignature();
+    fetchActiveCertSignature();
   }, []);
+
+  const fetchActiveCertSignature = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/signature`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActiveCertSignatures(data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching cert signature:', err);
+    }
+  };
 
   const fetchActiveSignature = async () => {
     try {
@@ -180,6 +200,50 @@ const AdminDashboard = () => {
       }
     } catch (err) {
       toast.error('Delete failed');
+    }
+  };
+
+  const handleCertSignatureUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!certSignatureFile) {
+      toast.error('Please select a PNG file to upload.');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', certSignatureFile);
+    formData.append('role', certSignatureRole);
+
+    try {
+      const res = await fetch(`${API_URL}/api/admin/signature`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Certificate Signature uploaded and activated!');
+        fetchActiveCertSignature();
+        setCertSignatureFile(null);
+      } else {
+        toast.error(data.message || 'Signature upload failed');
+      }
+    } catch (error) {
+      toast.error('Error uploading signature');
+    }
+  };
+
+  const handleDeactivateCertSignature = async (id) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/signature/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      if (res.ok) {
+        toast.success('Certificate Signature deactivated');
+        fetchActiveCertSignature();
+      }
+    } catch (error) {
+      toast.error('Error deactivating signature');
     }
   };
 
@@ -753,50 +817,163 @@ const AdminDashboard = () => {
               <>
                 {activeTab === 'upload' && (
               <div className="bg-white p-8 rounded-2xl shadow-sm border">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Upload Student Records</h2>
-                    <p className="text-gray-500">Create a new student result batch by uploading a CSV or Excel file.</p>
-                  </div>
-                  <a 
-                    href="/sample-result-template.xlsx" 
-                    download 
-                    className="flex items-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all border border-blue-100"
+                <div className="flex border-b mb-6">
+                  <button
+                    className={`py-2 px-4 font-bold border-b-2 transition-all ${
+                      activeResultUploadTab === 'upload_records' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveResultUploadTab('upload_records')}
                   >
-                    <DocumentTextIcon className="w-5 h-5" />
-                    Result Template
-                  </a>
-                </div>
-                <form onSubmit={handleUpload} className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Programme Name</label>
-                    <input 
-                      type="text" 
-                      value={subject} 
-                      onChange={(e) => setSubject(e.target.value)} 
-                      className="w-full border-gray-200 border p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
-                      placeholder="e.g. Mathematics" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">CSV/Excel File</label>
-                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
-                      <input 
-                        type="file" 
-                        onChange={(e) => setFile(e.target.files[0])} 
-                        className="absolute inset-0 opacity-0 cursor-pointer" 
-                        accept=".csv,.xlsx,.xls" 
-                      />
-                      <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-sm text-gray-600">
-                        {file ? <span className="text-blue-600 font-bold">{file.name}</span> : "Click or drag to upload result sheet"}
-                      </p>
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
-                    Upload Student Records
+                    Upload Records
                   </button>
-                </form>
+                  <button
+                    className={`py-2 px-4 font-bold border-b-2 transition-all ${
+                      activeResultUploadTab === 'upload_signature' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setActiveResultUploadTab('upload_signature')}
+                  >
+                    Upload Signature
+                  </button>
+                </div>
+
+                {activeResultUploadTab === 'upload_records' && (
+                  <div>
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-2xl font-bold text-gray-800">Upload Student Records</h2>
+                        <p className="text-gray-500">Create a new student result batch by uploading a CSV or Excel file.</p>
+                      </div>
+                      <a 
+                        href="/sample-result-template.xlsx" 
+                        download 
+                        className="flex items-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all border border-blue-100"
+                      >
+                        <DocumentTextIcon className="w-5 h-5" />
+                        Result Template
+                      </a>
+                    </div>
+                    <form onSubmit={handleUpload} className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Programme Name</label>
+                        <input 
+                          type="text" 
+                          value={subject} 
+                          onChange={(e) => setSubject(e.target.value)} 
+                          className="w-full border-gray-200 border p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                          placeholder="e.g. Mathematics" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">CSV/Excel File</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                          <input 
+                            type="file" 
+                            onChange={(e) => setFile(e.target.files[0])} 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            accept=".csv,.xlsx,.xls" 
+                          />
+                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm text-gray-600">
+                            {file ? <span className="text-blue-600 font-bold">{file.name}</span> : "Click or drag to upload result sheet"}
+                          </p>
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
+                        Upload Student Records
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {activeResultUploadTab === 'upload_signature' && (
+                  <div className="max-w-2xl">
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Certificate Signature</h2>
+                    <p className="text-gray-500 mb-8">Manage the signature rendered on regular certificates (Verifying Authority & Controller of Exam).</p>
+
+                    <div className="mb-8 p-6 bg-gray-50 border rounded-2xl">
+                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Active Signatures</h3>
+                      {activeCertSignatures.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {activeCertSignatures.map(sig => (
+                            <div key={sig._id} className="space-y-4">
+                              <h4 className="font-bold text-gray-800">{sig.role}</h4>
+                              <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-full shadow-inner">
+                                <img 
+                                  src={`${API_URL}/${sig.filePath.replace(/^uploads\//, '')}`} 
+                                  alt={sig.role} 
+                                  className="max-h-full max-w-full object-contain" 
+                                />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400">Uploaded at: {new Date(sig.uploadedAt).toLocaleString()}</p>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => handleDeactivateCertSignature(sig._id)}
+                                className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors w-full"
+                              >
+                                Deactivate
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-gray-400 text-sm">
+                          No active signatures uploaded. Certs will display empty space.
+                        </div>
+                      )}
+                    </div>
+
+                    <form onSubmit={handleCertSignatureUploadSubmit} className="space-y-6">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Select Signature Role</label>
+                        <div className="flex gap-4">
+                          <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${certSignatureRole === 'Verifying Authority' ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:border-gray-300'}`}>
+                            <input 
+                              type="radio" 
+                              name="signatureRole" 
+                              value="Verifying Authority" 
+                              checked={certSignatureRole === 'Verifying Authority'} 
+                              onChange={(e) => setCertSignatureRole(e.target.value)} 
+                              className="sr-only"
+                            />
+                            <div className="font-bold text-sm text-gray-800">Verifying Authority</div>
+                          </label>
+                          <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:border-gray-300'}`}>
+                            <input 
+                              type="radio" 
+                              name="signatureRole" 
+                              value="Controller of Examination" 
+                              checked={certSignatureRole === 'Controller of Examination'} 
+                              onChange={(e) => setCertSignatureRole(e.target.value)} 
+                              className="sr-only"
+                            />
+                            <div className="font-bold text-sm text-gray-800">Controller of Examination</div>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload PNG Signature</label>
+                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                          <input 
+                            type="file" 
+                            onChange={(e) => setCertSignatureFile(e.target.files[0])} 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            accept="image/png" 
+                          />
+                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-sm text-gray-600">
+                            {certSignatureFile ? <span className="text-blue-600 font-bold">{certSignatureFile.name}</span> : "Click or drag to upload PNG signature"}
+                          </p>
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
+                        Activate New Signature
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
             )}
 

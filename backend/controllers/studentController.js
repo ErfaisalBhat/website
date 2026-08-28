@@ -254,6 +254,20 @@ const generateCertificate = async (req, res) => {
       profileImageId: profileImageBase64 || rawImageUrl
     };
 
+    // Attach active certificate signatures if they exist
+    const CertificateSignature = require('../models/CertificateSignature');
+    const activeSignatures = await CertificateSignature.find({ isActive: true });
+    
+    const authSig = activeSignatures.find(s => s.role === 'Verifying Authority');
+    const controllerSig = activeSignatures.find(s => s.role === 'Controller of Examination');
+
+    if (authSig) {
+      certificateData.authSignatureImage = authSig.filePath;
+    }
+    if (controllerSig) {
+      certificateData.controllerSignatureImage = controllerSig.filePath;
+    }
+
     res.json(certificateData);
   } catch (error) {
     console.error('Error generating certificate:', error);
