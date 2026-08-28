@@ -2,12 +2,14 @@ import React, { useState, useRef } from 'react';
 import StudentHeader from './StudentHeader';
 import DiplomaCertificateTemplate from './DiplomaCertificateTemplate';
 import { useReactToPrint } from 'react-to-print';
+import html2pdf from 'html2pdf.js';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const StudentDiplomaDownload = () => {
   const [formData, setFormData] = useState({ rollNo: '', dateOfBirth: '' });
   const [loading, setLoading] = useState(false);
+  const [isSavingPDF, setIsSavingPDF] = useState(false);
   const [error, setError] = useState('');
   const [certificate, setCertificate] = useState(null);
   const certificateRef = useRef();
@@ -17,6 +19,39 @@ const StudentDiplomaDownload = () => {
     documentTitle: `${certificate?.rollNo || 'Diploma'}_Diploma`,
     pageStyle: '@page { size: A4; margin: 0; } @media print { body { margin: 0; } }',
   });
+
+  const handleDownloadPDF = async () => {
+    setIsSavingPDF(true);
+    const element = certificateRef.current;
+    const opt = {
+      margin: 0,
+      filename: `${certificate?.rollNo || 'Diploma'}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 3, useCORS: true, allowTaint: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+      
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', pdfBlob, `${certificate?.rollNo || 'Diploma'}.pdf`);
+      uploadFormData.append('rollNo', certificate?.rollNo);
+      uploadFormData.append('type', 'diploma');
+
+      await fetch(`${API_URL}/api/diplomas/save-certificate-to-drive`, {
+        method: 'POST',
+        body: uploadFormData
+      });
+
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error("PDF Gen Error:", err);
+      alert("Failed to generate/save PDF. Please try again.");
+    } finally {
+      setIsSavingPDF(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -107,13 +142,14 @@ const StudentDiplomaDownload = () => {
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 flex flex-col items-center">
             <div className="flex gap-4 mb-6">
               <button
-                onClick={() => handlePrint()}
-                className="bg-blue-800 text-white font-bold py-3 px-6 rounded-xl hover:bg-blue-900 transition-colors shadow-md flex items-center gap-2"
+                onClick={handleDownloadPDF}
+                disabled={isSavingPDF}
+                className="bg-blue-800 text-white font-bold py-3 px-6 rounded-xl hover:bg-blue-900 transition-colors shadow-md flex items-center gap-2 disabled:opacity-50"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Print Preview
+                {isSavingPDF ? 'Processing...' : 'Print'}
               </button>
             </div>
 

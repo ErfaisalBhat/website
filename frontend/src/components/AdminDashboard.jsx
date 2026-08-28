@@ -943,20 +943,27 @@ const AdminDashboard = () => {
                                 {r.rollNo}
                               </td>
                               <td className="p-5 text-right">
-                                <label className={`cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-all shadow-md ${r.student?.profileImageId ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}>
-                                  <CloudArrowUpIcon className="w-4 h-4" />
-                                  {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
-                                  <input 
-                                    type="file" 
-                                    className="hidden" 
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      if (e.target.files?.[0]) {
-                                        handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
-                                      }
-                                    }}
-                                  />
-                                </label>
+                                {r.status === 'approved' && r.student?.profileImageId ? (
+                                  <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-xl cursor-not-allowed">
+                                    <LockClosedIcon className="w-4 h-4" />
+                                    Locked (Published)
+                                  </span>
+                                ) : (
+                                  <label className={`cursor-pointer inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold active:scale-95 transition-all shadow-md ${r.student?.profileImageId ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}>
+                                    <CloudArrowUpIcon className="w-4 h-4" />
+                                    {r.student?.profileImageId ? 'Change Photo' : 'Upload Photo'}
+                                    <input 
+                                      type="file" 
+                                      className="hidden" 
+                                      accept="image/*"
+                                      onChange={(e) => {
+                                        if (e.target.files?.[0]) {
+                                          handlePhotoUpload(r.student?._id || r.student, e.target.files[0]);
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                )}
                               </td>
                             </tr>
                           ))}

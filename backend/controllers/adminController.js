@@ -3,15 +3,7 @@ const Result = require('../models/Result');
 const FileUpload = require('../models/FileUpload');
 const { processCSV, processExcel } = require('../utils/fileParser');
 const mongoose = require('mongoose');
-const cloudinary = require('cloudinary').v2;
-const { Readable } = require('stream');
-
-// Cloudinary Configuration
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+const { uploadFileToDrive, deleteFileFromDrive } = require('../utils/googleDriveUploader');
 
 // Admin uploads student data -> Creates "draft" results
 const uploadStudents = async (req, res) => {
@@ -182,7 +174,7 @@ const getPendingResults = async (req, res) => {
 const getApprovedBatches = async (req, res) => {
   try {
     const batches = await Result.aggregate([
-      { $match: { status: 'approved' } },
+      { $match: { status: { $in: ['approved', 'disapproved'] } } },
       {
         $group: {
           _id: '$batchId',
@@ -190,6 +182,10 @@ const getApprovedBatches = async (req, res) => {
           subject: { $first: '$subject' },
           uploadedBy: { $first: '$uploadedBy' },
           createdAt: { $first: '$createdAt' },
+          submittedAt: { $first: '$submittedAt' },
+          approvedAt: { $first: '$approvedAt' },
+          disapprovedAt: { $first: '$disapprovedAt' },
+          status: { $first: '$status' },
           studentCount: { $sum: 1 }
         }
       },
@@ -215,11 +211,11 @@ const deleteApprovedBatch = async (req, res) => {
     const { batchId } = req.params;
     
     // Find all results in this batch to get student IDs
-    const results = await Result.find({ batchId, status: 'approved' });
+    const results = await Result.find({ batchId, status: { $in: ['approved', 'disapproved'] } });
     const studentIds = results.map(r => r.student);
 
     // Delete all results in this batch first
-    await Result.deleteMany({ batchId, status: 'approved' });
+    await Result.deleteMany({ batchId, status: { $in: ['approved', 'disapproved'] } });
     
     // Delete the associated file upload
     await FileUpload.deleteOne({ batchId });
@@ -280,10 +276,31 @@ const getTeachers = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    const students = await User.find({ role: 'student' })
-                               .select('name email rollNo profileImageId')
-                               .collation({ locale: "en_US", numericOrdering: true })
-                               .sort({ rollNo: 1, name: 1 });
+    const users = await User.find({ role: 'student' })
+                            .select('name email rollNo profileImageId')
+                            .collation({ locale: "en_US", numericOrdering: true })
+                            .sort({ rollNo: 1, name: 1 })
+                            .lean();
+
+    // Fetch all results to map status and rollNo for old students
+    const userIds = users.map(u => u._id);
+    const results = await Result.find({ student: { $in: userIds } })
+                                .select('student status rollNo')
+                                .lean();
+
+    const students = users.map(user => {
+      const userResults = results.filter(r => r.student.toString() === user._id.toString());
+      
+      const hasApprovedResult = userResults.some(r => r.status === 'approved');
+      const fallbackRollNo = userResults.length > 0 ? userResults[0].rollNo : '';
+      
+      return {
+        ...user,
+        hasApprovedResult,
+        rollNo: user.rollNo || fallbackRollNo
+      };
+    });
+
     res.json(students);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching students', error: error.message });
@@ -413,45 +430,52 @@ const updateBatchResults = async (req, res) => {
 };
 
 const uploadStudentPhoto = async (req, res) => {
-  console.log('--- PHOTO UPLOAD START ---');
+  console.log('--- PHOTO UPLOAD START (Google Drive) ---');
   try {
     const { studentId } = req.params;
     console.log('Target Student ID:', studentId);
-    
+
     if (!req.file) {
       console.log('Error: No file in request');
       return res.status(400).json({ message: 'No image uploaded' });
     }
 
-    // Configure Cloudinary
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-      api_key: process.env.CLOUDINARY_API_KEY,
-      api_secret: process.env.CLOUDINARY_API_SECRET
+    // Check if result is already published — no photo changes allowed after approval
+    const publishedResult = await Result.findOne({ student: studentId, status: 'approved' });
+    if (publishedResult) {
+      return res.status(403).json({ message: 'Photo cannot be changed once the result is published.' });
+    }
+
+    // If the student already has a Drive file stored, delete the old one first
+    const existingStudent = await User.findById(studentId).select('profileImageId profileDriveFileId rollNo');
+    if (existingStudent?.profileDriveFileId) {
+      console.log('Deleting old Drive file:', existingStudent.profileDriveFileId);
+      await deleteFileFromDrive(existingStudent.profileDriveFileId);
+    }
+
+    console.log('Uploading to Google Drive...');
+
+    // Use a cleaner filename with the student's roll number
+    const ext = req.file.originalname.split('.').pop() || 'jpg';
+    const rollNumber = existingStudent?.rollNo || studentId;
+    const fileName = `${rollNumber}_Photo.${ext}`;
+
+    const driveResult = await uploadFileToDrive({
+      buffer: req.file.buffer,
+      mimeType: req.file.mimetype,
+      fileName,
     });
 
-    console.log('Cloud Name:', process.env.CLOUDINARY_CLOUD_NAME);
+    console.log('Google Drive upload successful. File ID:', driveResult.fileId);
+    console.log('Direct URL:', driveResult.directUrl);
 
-    // Convert buffer to base64
-    const fileBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-    
-    console.log('Attempting Cloudinary upload...');
-    
-    const result = await cloudinary.uploader.upload(fileBase64, {
-      folder: 'student_photos',
-      public_id: `student_${studentId}`,
-      overwrite: true,
-      transformation: [
-        { width: 400, height: 500, crop: 'fill', gravity: 'face' }
-      ]
-    });
-
-    console.log('Cloudinary Result URL:', result.secure_url);
-    
-    // Store the secure URL in the database
+    // Store the direct embeddable URL + file ID in the database
     const updatedUser = await User.findByIdAndUpdate(
-      studentId, 
-      { profileImageId: result.secure_url },
+      studentId,
+      {
+        profileImageId: driveResult.directUrl,       // URL used in certificates & UI
+        profileDriveFileId: driveResult.fileId,      // Drive file ID for future deletion
+      },
       { new: true }
     );
 
@@ -461,16 +485,17 @@ const uploadStudentPhoto = async (req, res) => {
     }
 
     console.log('Database updated successfully');
-    res.json({ 
-      message: 'Photo uploaded and linked successfully', 
-      imageUrl: result.secure_url 
+    res.json({
+      message: 'Photo uploaded to Google Drive successfully',
+      imageUrl: driveResult.directUrl,
+      driveFileId: driveResult.fileId,
     });
   } catch (error) {
     console.error('CRITICAL UPLOAD ERROR:', error);
-    res.status(500).json({ 
-      message: 'Photo Upload Failed', 
+    res.status(500).json({
+      message: 'Photo Upload Failed',
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
     });
   }
 };

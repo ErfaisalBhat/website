@@ -24,26 +24,43 @@ const StudentDashboard = () => {
     documentTitle: `${selectedResult?.rollNo || 'Certificate'}_Certificate`,
   });
 
+  const [isSavingPDF, setIsSavingPDF] = useState(false);
+
   const handleDownloadPDF = async () => {
+    setIsSavingPDF(true);
     const element = certificateRef.current;
     const opt = {
       margin: 0,
-      filename: `${selectedResult?.rollNo || 'Certificate'}_Certificate.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        letterRendering: true,
-        allowTaint: true
-      },
+      filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 3, useCORS: true, allowTaint: true },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
     try {
+      // 1. Generate PDF blob
+      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+      
+      // 2. Upload to Drive via Backend
+      const token = localStorage.getItem('studentToken');
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `${selectedResult?.rollNo || 'Certificate'}.pdf`);
+      formData.append('rollNo', selectedResult?.rollNo);
+      formData.append('type', 'certificate');
+
+      await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+
+      // 3. Download to user's device
       await html2pdf().set(opt).from(element).save();
     } catch (err) {
       console.error("PDF Gen Error:", err);
-      alert("Failed to generate PDF. Please try again.");
+      alert("Failed to generate/save PDF. Please try again.");
+    } finally {
+      setIsSavingPDF(false);
     }
   };
 
@@ -75,14 +92,13 @@ const StudentDashboard = () => {
   const handleDownloadCertificate = async (resultId) => {
     try {
       const token = localStorage.getItem('studentToken');
-      const response = await fetch(`${API_URL}/api/student/results`, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      const response = await fetch(`${API_URL}/api/student/certificate/${resultId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.status === 401) { logoutStudent(); navigate('/student/login'); return; }
       if (response.ok) {
         const data = await response.json();
-        const result = data.find(r => r._id === resultId);
-        setSelectedResult(result);
+        setSelectedResult(data);
       } else {
         setError('Failed to download certificate');
       }
@@ -288,19 +304,12 @@ const StudentDashboard = () => {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
               <h3 className="text-lg font-bold text-gray-800">Certificate Preview</h3>
               <div className="flex gap-3">
-                <button onClick={handlePrintCertificate}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-colors text-sm">
+                <button onClick={handleDownloadPDF} disabled={isSavingPDF}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-colors text-sm disabled:opacity-50">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                   </svg>
-                  Print
-                </button>
-                <button onClick={handleDownloadPDF}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm transition-colors text-sm">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Preview
+                  {isSavingPDF ? 'Processing...' : 'Print'}
                 </button>
                 <button onClick={() => setSelectedResult(null)}
                   className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">

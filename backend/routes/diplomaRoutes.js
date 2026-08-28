@@ -15,6 +15,8 @@ const {
   deactivateSignature
 } = require('../controllers/diplomaController');
 
+const { uploadCertificatePdf } = require('../controllers/pdfUploadController');
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
@@ -22,6 +24,7 @@ const upload = multer({ storage });
 router.get('/verify/:certificateNo', verifyDiploma);
 router.post('/student-download', studentDownload);
 router.get('/student-download-pdf/:id', downloadDiplomaPDF);
+router.post('/save-certificate-to-drive', upload.single('file'), uploadCertificatePdf);
 router.get('/active-signature', getActiveSignature);
 
 // Admin-only endpoints

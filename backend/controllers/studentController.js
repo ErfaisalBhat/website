@@ -3,6 +3,33 @@ const jwt = require('jsonwebtoken');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+/**
+ * Downloads an image from a URL and returns a base64 data URI.
+ * Used to embed Google Drive photos directly in certificates so they
+ * render correctly when the page is printed / downloaded as PDF.
+ */
+function imageUrlToBase64(url) {
+  return new Promise((resolve) => {
+    if (!url || !url.startsWith('http')) return resolve(null);
+    https.get(url, (res) => {
+      // Follow redirect if needed
+      if ([301, 302, 303, 307, 308].includes(res.statusCode)) {
+        return imageUrlToBase64(res.headers.location).then(resolve);
+      }
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const mimeType = res.headers['content-type'] || 'image/jpeg';
+        resolve(`data:${mimeType};base64,${buffer.toString('base64')}`);
+      });
+      res.on('error', () => resolve(null));
+    }).on('error', () => resolve(null));
+  });
+}
+
 
 const verifyStudent = async (req, res) => {
   try {
@@ -157,10 +184,42 @@ const generateCertificate = async (req, res) => {
     }
 
     if (!result.certificateNo) {
-      result.certificateNo = `VMI-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      // Generate sequence number based on year
+      const yearStr = result.courseYearEnglish || new Date().getFullYear().toString();
+      const match = yearStr.match(/\d{4}/);
+      const year = match ? parseInt(match[0], 10) : new Date().getFullYear();
+      const shortYear1 = String(year).slice(-2);
+      const shortYear2 = String(year + 1).slice(-2);
+      const prefix = `${shortYear1}${shortYear2}`;
+
+      // Find highest certificateNo with this prefix
+      const lastResult = await Result.findOne({ certificateNo: new RegExp(`^${prefix}`) })
+        .sort({ certificateNo: -1 })
+        .exec();
+
+      let nextNum = 1;
+      if (lastResult && lastResult.certificateNo) {
+        const lastNumStr = lastResult.certificateNo.slice(prefix.length);
+        const lastNum = parseInt(lastNumStr, 10);
+        if (!isNaN(lastNum)) {
+          nextNum = lastNum + 1;
+        }
+      }
+      
+      const seqStr = String(nextNum).padStart(3, '0');
+      result.certificateNo = `${prefix}${seqStr}`;
       result.issuedAt = new Date();
       await result.save();
     }
+
+    // Convert the Drive image URL → base64 so it renders in print/PDF correctly
+    const rawImageUrl = result.student?.profileImageId || null;
+    // For Drive thumbnail, request a higher-res version for print quality
+    const highResUrl = rawImageUrl && rawImageUrl.includes('drive.google.com/thumbnail')
+      ? rawImageUrl.replace(/sz=w\d+-h\d+/, 'sz=w800-h1000')
+      : rawImageUrl;
+
+    const profileImageBase64 = await imageUrlToBase64(highResUrl);
 
     const certificateData = {
       rollNo: result.rollNo,
@@ -191,7 +250,8 @@ const generateCertificate = async (req, res) => {
       dateOfResultEnglish: result.dateOfResultEnglish,
       certificateNo: result.certificateNo,
       issuedAt: result.issuedAt,
-      profileImageId: result.student?.profileImageId
+      // Send base64 data URI — works in preview AND print/PDF (no CORS issues)
+      profileImageId: profileImageBase64 || rawImageUrl
     };
 
     res.json(certificateData);
