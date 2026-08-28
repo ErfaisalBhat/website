@@ -500,6 +500,28 @@ const uploadStudentPhoto = async (req, res) => {
   }
 };
 
+const getStudentPhoto = async (req, res) => {
+  try {
+    const student = await User.findById(req.params.id);
+    if (!student || !student.profileImageId) {
+      return res.status(404).send('Photo not found');
+    }
+    const url = student.profileImageId;
+    if (url.startsWith('http')) {
+      const axios = require('axios');
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      res.set('Content-Type', response.headers['content-type']);
+      res.send(response.data);
+    } else {
+      const path = require('path');
+      res.sendFile(path.join(__dirname, '..', 'uploads', url));
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error fetching photo');
+  }
+};
+
 const CertificateSignature = require('../models/CertificateSignature');
 const path = require('path');
 const fs = require('fs');
@@ -592,6 +614,7 @@ module.exports = {
   deleteApprovedBatch,
   updateBatchResults,
   uploadStudentPhoto,
+  getStudentPhoto,
   uploadCertificateSignature,
   getActiveCertificateSignature,
   deactivateCertificateSignature

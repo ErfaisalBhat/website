@@ -1101,7 +1101,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-4">
                                   {r.student?.profileImageId ? (
                                     <img 
-                                      src={r.student.profileImageId} 
+                                      src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
                                     />
@@ -1357,7 +1357,7 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-4">
                                   {r.student?.profileImageId ? (
                                     <img 
-                                      src={r.student.profileImageId} 
+                                      src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
                                     />
@@ -1432,7 +1432,7 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-4">
                               {student.profileImageId ? (
                                 <img 
-                                  src={student.profileImageId} 
+                                  src={student?.profileImageId?.startsWith('http') ? student.profileImageId : `${API_URL}/api/admin/student-photo/${student._id}`} 
                                   alt="" 
                                   className="w-12 h-12 rounded-lg object-cover border"
                                 />
@@ -1864,7 +1864,7 @@ const AdminDashboard = () => {
                           <div className="flex flex-col items-center gap-1">
                             {r.student?.profileImageId ? (
                               <img 
-                                src={r.student.profileImageId} 
+                                src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
                                 alt="Student" 
                                 className="w-8 h-8 rounded-full object-cover border"
                               />

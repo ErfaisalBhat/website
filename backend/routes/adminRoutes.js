@@ -19,6 +19,7 @@ const {
   deleteApprovedBatch,
   updateBatchResults,
   uploadStudentPhoto,
+  getStudentPhoto,
   uploadCertificateSignature,
   getActiveCertificateSignature,
   deactivateCertificateSignature
@@ -33,6 +34,7 @@ router.use(admin);
 
 router.post('/upload-students', upload.single('file'), uploadStudents);
 router.post('/upload-photo/:studentId', upload.single('photo'), uploadStudentPhoto);
+router.get('/student-photo/:id', getStudentPhoto);
 router.post('/assign-batch', assignBatch);
 router.get('/draft-batches', getDraftBatches);
 router.delete('/draft-batch/:batchId', deleteDraftBatch);
