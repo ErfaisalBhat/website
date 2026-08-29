@@ -1101,7 +1101,11 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-4">
                                   {r.student?.profileImageId ? (
                                     <img 
-                                      src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
+                                      src={
+                                        r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
+                                          ? r.student.profileImageId
+                                          : `${API_URL}/uploads/${r.student.profileImageId}`
+                                      }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
                                     />
@@ -1357,7 +1361,11 @@ const AdminDashboard = () => {
                                 <div className="flex items-center gap-4">
                                   {r.student?.profileImageId ? (
                                     <img 
-                                      src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
+                                      src={
+                                        r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
+                                          ? r.student.profileImageId
+                                          : `${API_URL}/uploads/${r.student.profileImageId}`
+                                      }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
                                     />
@@ -1432,7 +1440,11 @@ const AdminDashboard = () => {
                             <div className="flex items-center gap-4">
                               {student.profileImageId ? (
                                 <img 
-                                  src={student?.profileImageId?.startsWith('http') ? student.profileImageId : `${API_URL}/api/admin/student-photo/${student._id}`} 
+                                  src={
+                                    student.profileImageId.startsWith('http') || student.profileImageId.startsWith('data:')
+                                      ? student.profileImageId
+                                      : `${API_URL}/uploads/${student.profileImageId}`
+                                  }
                                   alt="" 
                                   className="w-12 h-12 rounded-lg object-cover border"
                                 />

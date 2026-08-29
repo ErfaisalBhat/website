@@ -509,15 +509,31 @@ const getStudentPhoto = async (req, res) => {
     const url = student.profileImageId;
     if (url.startsWith('http')) {
       const axios = require('axios');
-      const response = await axios.get(url, { responseType: 'arraybuffer' });
-      res.set('Content-Type', response.headers['content-type']);
+      // Add a browser-like User-Agent so Google's CDN serves the actual image
+      // instead of redirecting to an HTML error page
+      const response = await axios.get(url, {
+        responseType: 'arraybuffer',
+        maxRedirects: 5,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
+          'Referer': 'https://drive.google.com/',
+        },
+      });
+      // Make sure we got an image back (not HTML redirect/error page)
+      const contentType = response.headers['content-type'] || 'image/jpeg';
+      if (!contentType.startsWith('image/')) {
+        return res.status(502).send('Failed to fetch photo from storage');
+      }
+      res.set('Content-Type', contentType);
+      res.set('Cache-Control', 'public, max-age=3600');
       res.send(response.data);
     } else {
       const path = require('path');
       res.sendFile(path.join(__dirname, '..', 'uploads', url));
     }
   } catch (err) {
-    console.error(err);
+    console.error('getStudentPhoto error:', err.message);
     res.status(500).send('Error fetching photo');
   }
 };

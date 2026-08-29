@@ -25,15 +25,18 @@ const StudentDashboard = () => {
   });
 
   const [isSavingPDF, setIsSavingPDF] = useState(false);
+  const isSavingRef = useRef(false);
 
   const handleDownloadPDF = async () => {
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
     setIsSavingPDF(true);
     const element = certificateRef.current;
     const opt = {
       margin: 0,
       filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
       image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 3, useCORS: true, allowTaint: true },
+      html2canvas: { scale: 3, useCORS: true, allowTaint: true, scrollY: 0, scrollX: 0 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -61,6 +64,7 @@ const StudentDashboard = () => {
       alert("Failed to generate/save PDF. Please try again.");
     } finally {
       setIsSavingPDF(false);
+      isSavingRef.current = false;
     }
   };
 
@@ -258,7 +262,16 @@ const StudentDashboard = () => {
                           <div className="flex justify-between items-start mb-1">
                             <h4 className="font-bold text-gray-800">{result.subject}</h4>
                             {result.certificateNo && (
-                              <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">{result.certificateNo}</span>
+                              <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
+                                {(() => {
+                                  const certNo = result.certificateNo;
+                                  const roll = student?.rollNo;
+                                  if (!certNo || certNo.includes('-') || !roll || certNo.length <= 4) return certNo;
+                                  const prefix = certNo.substring(0, 4);
+                                  const seqNum = parseInt(certNo.substring(4), 10);
+                                  return !isNaN(seqNum) ? `${prefix}-${roll}-${seqNum}` : certNo;
+                                })()}
+                              </span>
                             )}
                           </div>
                           <p className="text-xs text-gray-500 mb-3">
@@ -319,7 +332,7 @@ const StudentDashboard = () => {
             </div>
             <div className="flex justify-center bg-gray-50 overflow-auto">
               <div ref={certificateRef} id="printableContent" className="bg-white">
-                <CertificateTemplate certificateData={selectedResult} />
+                <CertificateTemplate certificateData={selectedResult} student={student} />
               </div>
             </div>
           </div>

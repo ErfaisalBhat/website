@@ -29,12 +29,14 @@ const { protect, admin } = require('../middleware/authMiddleware');
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// Public route — no auth needed so <img> tags can load photos directly
+router.get('/student-photo/:id', getStudentPhoto);
+
 router.use(protect);
 router.use(admin);
 
 router.post('/upload-students', upload.single('file'), uploadStudents);
 router.post('/upload-photo/:studentId', upload.single('photo'), uploadStudentPhoto);
-router.get('/student-photo/:id', getStudentPhoto);
 router.post('/assign-batch', assignBatch);
 router.get('/draft-batches', getDraftBatches);
 router.delete('/draft-batch/:batchId', deleteDraftBatch);

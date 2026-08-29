@@ -14,13 +14,28 @@ const VerifyCertificate = () => {
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
 
+  const unformatCertNo = (formattedCertNo) => {
+    if (!formattedCertNo) return '';
+    const parts = formattedCertNo.split('-');
+    if (parts.length >= 3) {
+      const prefix = parts[0];
+      const seqNum = parseInt(parts[parts.length - 1], 10);
+      if (prefix.length >= 2 && !isNaN(seqNum)) {
+        const seqStr = String(seqNum).padStart(3, '0');
+        return `${prefix}${seqStr}`;
+      }
+    }
+    return formattedCertNo;
+  };
+
   const verifyCertificate = async (certificateNumber) => {
     if (!certificateNumber.trim()) return;
     setLoading(true);
     setError('');
     setResult(null);
     try {
-      const response = await axios.get(`${API_URL}/api/student/verify/${encodeURIComponent(certificateNumber.trim())}`);
+      const rawCertNo = unformatCertNo(certificateNumber.trim());
+      const response = await axios.get(`${API_URL}/api/student/verify/${encodeURIComponent(rawCertNo)}`);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Certificate not found or invalid');
@@ -148,7 +163,11 @@ const VerifyCertificate = () => {
                       {result.profileImageId ? (
                         <div className="relative">
                           <img 
-                            src={result.profileImageId} 
+                            src={
+                              result.profileImageId.startsWith('http') || result.profileImageId.startsWith('data:')
+                                ? result.profileImageId
+                                : `${API_URL}/uploads/${result.profileImageId}`
+                            }
                             alt="Student" 
                             className="w-32 h-40 object-cover rounded-lg border-2 border-gray-100 shadow-md"
                           />

@@ -60,28 +60,69 @@ async function uploadFileToDrive({ buffer, mimeType, fileName, folderId }) {
     );
   }
 
+  let existingFileId = null;
+  let existingWebViewLink = null;
+  let allExistingFiles = [];
+
+  // 1. Search for existing file
+  try {
+    const searchResponse = await drive.files.list({
+      q: `name='${fileName}' and '${targetFolderId}' in parents and trashed=false`,
+      fields: 'files(id, webViewLink)',
+      spaces: 'drive'
+    });
+    if (searchResponse.data.files && searchResponse.data.files.length > 0) {
+      allExistingFiles = searchResponse.data.files;
+      existingFileId = allExistingFiles[0].id;
+      existingWebViewLink = allExistingFiles[0].webViewLink;
+    }
+  } catch (err) {
+    console.error('Error searching Drive:', err.message);
+  }
+
   const readableStream = new Readable();
   readableStream.push(buffer);
   readableStream.push(null);
 
-  const response = await drive.files.create({
-    requestBody: { name: fileName, parents: [targetFolderId] },
-    media: { mimeType, body: readableStream },
-    fields: 'id, webViewLink, webContentLink',
-  });
+  // 2. Update or Create
+  if (existingFileId) {
+    try {
+      // Update existing
+      await drive.files.update({
+        fileId: existingFileId,
+        media: { mimeType, body: readableStream }
+      });
+      
+      // Cleanup duplicates if any
+      for (let i = 1; i < allExistingFiles.length; i++) {
+        try { await drive.files.delete({ fileId: allExistingFiles[i].id }); } catch (e) {}
+      }
 
-  const fileId = response.data.id;
+      const directUrl = `https://lh3.googleusercontent.com/d/${existingFileId}`;
+      return { fileId: existingFileId, webViewLink: existingWebViewLink, directUrl };
+    } catch (updateErr) {
+      console.error('Error updating existing Drive file:', updateErr.message);
+      throw updateErr; // Don't fall through to create!
+    }
+  } else {
+    // Create new
+    const response = await drive.files.create({
+      requestBody: { name: fileName, parents: [targetFolderId] },
+      media: { mimeType, body: readableStream },
+      fields: 'id, webViewLink, webContentLink',
+    });
 
-  // Make the file publicly readable so image URLs work in <img> tags
-  await drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
+    const fileId = response.data.id;
 
-  // Thumbnail URL — works reliably as <img src="..."> in browsers (no CORS issues)
-  const directUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400-h500`;
+    // Make the file publicly readable so image URLs work in <img> tags
+    await drive.permissions.create({
+      fileId,
+      requestBody: { role: 'reader', type: 'anyone' },
+    });
 
-  return { fileId, webViewLink: response.data.webViewLink, directUrl };
+    const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+    return { fileId, webViewLink: response.data.webViewLink, directUrl };
+  }
 }
 
 /**
