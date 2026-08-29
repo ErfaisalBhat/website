@@ -267,9 +267,8 @@ const StudentDashboard = () => {
                                   const certNo = result.certificateNo;
                                   const roll = student?.rollNo;
                                   if (!certNo || certNo.includes('-') || !roll || certNo.length <= 4) return certNo;
-                                  const prefix = certNo.substring(0, 4);
                                   const seqNum = parseInt(certNo.substring(4), 10);
-                                  return !isNaN(seqNum) ? `${prefix}-${roll}-${seqNum}` : certNo;
+                                  return !isNaN(seqNum) ? `VMI-${roll}-${seqNum}` : certNo;
                                 })()}
                               </span>
                             )}

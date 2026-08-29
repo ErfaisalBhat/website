@@ -14,28 +14,13 @@ const VerifyCertificate = () => {
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
 
-  const unformatCertNo = (formattedCertNo) => {
-    if (!formattedCertNo) return '';
-    const parts = formattedCertNo.split('-');
-    if (parts.length >= 3) {
-      const prefix = parts[0];
-      const seqNum = parseInt(parts[parts.length - 1], 10);
-      if (prefix.length >= 2 && !isNaN(seqNum)) {
-        const seqStr = String(seqNum).padStart(3, '0');
-        return `${prefix}${seqStr}`;
-      }
-    }
-    return formattedCertNo;
-  };
-
   const verifyCertificate = async (certificateNumber) => {
     if (!certificateNumber.trim()) return;
     setLoading(true);
     setError('');
     setResult(null);
     try {
-      const rawCertNo = unformatCertNo(certificateNumber.trim());
-      const response = await axios.get(`${API_URL}/api/student/verify/${encodeURIComponent(rawCertNo)}`);
+      const response = await axios.get(`${API_URL}/api/student/verify/${encodeURIComponent(certificateNumber.trim())}`);
       setResult(response.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Certificate not found or invalid');

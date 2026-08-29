@@ -32,11 +32,10 @@ const CertificateTemplate = ({ certificateData }) => {
     if (!certNo) return '';
     if (certNo.includes('-')) return certNo;
     if (certNo.length > 4 && roll) {
-      const prefix = certNo.substring(0, 4);
       const seqStr = certNo.substring(4);
       const seqNum = parseInt(seqStr, 10);
       if (!isNaN(seqNum)) {
-        return `${prefix}-${roll}-${seqNum}`;
+        return `VMI-${roll}-${seqNum}`;
       }
     }
     return certNo;
@@ -130,8 +129,11 @@ const CertificateTemplate = ({ certificateData }) => {
               <div style={{ ...kokila, fontSize:'13px', lineHeight:1.3 }}>नामांकन संख्या</div>
               <div style={{ ...tahoma, fontSize:'12px' }}>Enrolment No. {enrolmentNo}</div>
               {certificateNo && (
-                <div style={{ ...tahoma, fontSize:'11px', fontWeight:'bold', marginTop:'6px', color:'#333' }}>
-                  Certificate No. {displayCertificateNo}
+                <div style={{ marginTop:'6px', color:'#333' }}>
+                  <div style={{ ...kokila, fontSize:'13px', lineHeight:1.3 }}>प्रमाणपत्र संख्या</div>
+                  <div style={{ ...tahoma, fontSize:'11px' }}>
+                    Certificate No.: {displayCertificateNo}
+                  </div>
                 </div>
               )}
             </div>
@@ -197,7 +199,7 @@ const CertificateTemplate = ({ certificateData }) => {
           </div>
 
           {/* ══ ENGLISH BODY ══ */}
-          <div style={{ textAlign:'center', lineHeight:1.75, marginBottom:'8px', marginTop:'60px', ...tahoma, fontSize:'13px' }}>
+          <div style={{ textAlign:'center', lineHeight:1.75, marginBottom:'8px', marginTop:'40px', ...tahoma, fontSize:'13px' }}>
             <div>
               This is to certify that having been examined in&nbsp;
               <b>{courseYearEnglish}</b> and found qualified for the certificate in
@@ -330,7 +332,7 @@ const CertificateTemplate = ({ certificateData }) => {
 
 
           {/* ══ FOOTER ══ */}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop:'12px', marginBottom:'2px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop:'47px', marginBottom:'2px' }}>
 
             {/* Left — Controller of Examination */}
             <div style={{ textAlign:'center', width:'190px' }}>

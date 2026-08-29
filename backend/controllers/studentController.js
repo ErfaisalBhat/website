@@ -283,10 +283,19 @@ const verifyCertificate = async (req, res) => {
       return res.status(400).json({ message: 'Certificate number is required' });
     }
 
-    let result = await Result.findOne({
-      certificateNo,
-      status: 'approved' 
-    }).populate('student', 'profileImageId');
+    let query = { certificateNo, status: 'approved' };
+
+    // Support verification of the visual format "VMI-[RollNo]-[SeqNo]"
+    if (certificateNo.startsWith('VMI-')) {
+      const parts = certificateNo.split('-');
+      if (parts.length === 3) {
+        const rollStr = parts[1];
+        const seqStr = String(parts[2]).padStart(3, '0');
+        query = { rollNo: rollStr, certificateNo: new RegExp(seqStr + '$'), status: 'approved' };
+      }
+    }
+
+    let result = await Result.findOne(query).populate('student', 'profileImageId');
 
     if (!result) {
       const DiplomaCertificate = require('../models/DiplomaCertificate');
