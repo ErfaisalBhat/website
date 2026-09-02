@@ -183,6 +183,69 @@ const generateCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Result not found' });
     }
 
+    // --- ZOHO PAYMENT LOGIC (5 MINUTE TEST MODE) ---
+    const currentDate = new Date();
+    
+    if (!result.firstDownloadedAt) {
+      // First download! Start the timer
+      result.firstDownloadedAt = currentDate;
+      await result.save();
+    } else {
+      // Check how long it's been since the first download
+      const diffTime = Math.abs(currentDate - result.firstDownloadedAt);
+      const diffMinutes = Math.floor(diffTime / (1000 * 60)); // For production, change to diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+
+      // If it has been more than 5 minutes AND they haven't paid
+      if (diffMinutes >= 5 && result.paymentStatus !== 'paid') {
+        
+        // Let's dynamically create a payment link via Zoho Payments API
+        try {
+          const apiRes = await fetch("https://payments.zoho.in/api/v1/paymentlinks", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              // Depending on Zoho's new API, it might be Bearer or Zoho-oauthtoken
+              "Authorization": `Bearer ${process.env.ZOHO_API_KEY}` 
+            },
+            body: JSON.stringify({
+              amount: 1, // Rs. 1 (Test mode)
+              currency: "INR",
+              customer: {
+                name: result.candidateNameEnglish || "Student",
+                email: req.student.email || "student@example.com"
+              },
+              reference_id: result._id.toString(), // WE NEED THIS to unlock the right certificate later
+              description: "Certificate Redownload Fee"
+            })
+          });
+
+          const data = await apiRes.json();
+          
+          if (data && data.url) {
+            // Zoho gave us a payment link
+            return res.status(403).json({
+              success: false,
+              message: "Your free download window has expired. Please pay to download again.",
+              paymentUrl: data.url
+            });
+          } else {
+            // Fallback if the API fails or auth is wrong
+            console.error("Zoho API Error:", data);
+            return res.status(403).json({
+              success: false,
+              message: "Your free download window has expired. Please pay to download again.",
+              paymentUrl: `https://checkout.zoho.in/pay/YOUR_STATIC_URL_HERE?Result_ID=${result._id}`
+            });
+          }
+
+        } catch (err) {
+          console.error("Zoho Request Error:", err);
+          return res.status(500).json({ message: "Payment setup failed." });
+        }
+      }
+    }
+    // --- END ZOHO PAYMENT LOGIC ---
+
     if (!result.certificateNo) {
       // Generate sequence number based on year
       const yearStr = result.courseYearEnglish || new Date().getFullYear().toString();
@@ -254,12 +317,19 @@ const generateCertificate = async (req, res) => {
       profileImageId: profileImageBase64 || rawImageUrl
     };
 
-    // Attach active certificate signatures if they exist
+    // Use the signature that was active at the time the result was approved/created
+    const referenceTime = result.approvedAt || result.createdAt || new Date();
     const CertificateSignature = require('../models/CertificateSignature');
-    const activeSignatures = await CertificateSignature.find({ isActive: true });
     
-    const authSig = activeSignatures.find(s => s.role === 'Verifying Authority');
-    const controllerSig = activeSignatures.find(s => s.role === 'Controller of Examination');
+    const authSig = await CertificateSignature.findOne({ 
+      role: 'Verifying Authority', 
+      createdAt: { $lte: referenceTime } 
+    }).sort({ createdAt: -1 });
+
+    const controllerSig = await CertificateSignature.findOne({ 
+      role: 'Controller of Examination', 
+      createdAt: { $lte: referenceTime } 
+    }).sort({ createdAt: -1 });
 
     if (authSig) {
       certificateData.authSignatureImage = authSig.filePath;

@@ -103,6 +103,14 @@ const StudentDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setSelectedResult(data);
+      } else if (response.status === 403) {
+        const data = await response.json();
+        if (data.paymentUrl) {
+          // Redirect the user to Zoho Checkout
+          window.location.href = data.paymentUrl;
+        } else {
+          setError(data.message || 'Access denied');
+        }
       } else {
         setError('Failed to download certificate');
       }
@@ -202,7 +210,6 @@ const StudentDashboard = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {results.map((result) => {
                         const isPassed = !failedStatuses.includes(result.resultRemarkEnglish?.toLowerCase().trim());
-                        const isExpired = result.issuedAt && (new Date() - new Date(result.issuedAt)) / (1000 * 60 * 60 * 24) > 180;
                         return (
                           <tr key={result._id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{result.subject}</td>
@@ -214,9 +221,7 @@ const StudentDashboard = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                              {isPassed && (isExpired ? (
-                                <span className="text-amber-600 text-[10px] font-medium">Period ended</span>
-                              ) : (
+                              {isPassed && (
                                 <button onClick={() => handleDownloadCertificate(result._id)}
                                   className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1">
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +229,7 @@ const StudentDashboard = () => {
                                   </svg>
                                   Download
                                 </button>
-                              ))}
+                              )}
                             </td>
                           </tr>
                         );
@@ -255,7 +260,6 @@ const StudentDashboard = () => {
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {results.filter(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())).map((result) => {
-                    const isExpired = result.issuedAt && (new Date() - new Date(result.issuedAt)) / (1000 * 60 * 60 * 24) > 180;
                     return (
                       <div key={result._id} className="border border-gray-100 rounded-lg p-4 bg-gray-50 flex flex-col justify-between hover:border-green-300 transition-colors">
                         <div>
@@ -277,11 +281,6 @@ const StudentDashboard = () => {
                             {result.issuedAt ? `Issued: ${new Date(result.issuedAt).toLocaleDateString()}` : `Result Date: ${result.dateOfResultEnglish}`}
                           </p>
                         </div>
-                        {isExpired ? (
-                          <div className="text-center p-2 bg-amber-50 border border-amber-100 rounded-md text-amber-700 text-[11px] font-medium">
-                            Download period expired (180 days limit)
-                          </div>
-                        ) : (
                           <button onClick={() => handleDownloadCertificate(result._id)}
                             className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center gap-2 text-sm transition-colors shadow-sm">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +288,6 @@ const StudentDashboard = () => {
                             </svg>
                             Download Certificate
                           </button>
-                        )}
                       </div>
                     );
                   })}

@@ -230,7 +230,7 @@ const deleteApprovedBatch = async (req, res) => {
       }
     }
 
-    res.json({ message: 'Approved batch and orphaned student records deleted successfully' });
+    res.json({ message: 'Records deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting approved batch', error: error.message });
   }

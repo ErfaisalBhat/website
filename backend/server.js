@@ -15,7 +15,7 @@ const studentRoutes = require('./routes/studentRoutes');
 const searchRoutes = require('./routes/searchRoutes');
 const driveRoutes = require('./routes/driveRoutes');
 const diplomaRoutes = require('./routes/diplomaRoutes');
-
+const zohoRoutes = require('./routes/zohoRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -37,7 +37,7 @@ app.options("*", cors(corsOptions));
 // ✅ **Other Middleware**
 app.use(express.json());
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ **Debugging Middleware (Logs Every Request)**
 app.use((req, res, next) => {
@@ -76,6 +76,7 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/drive', driveRoutes);
 app.use('/api/diplomas', diplomaRoutes);
+app.use('/api/zoho', zohoRoutes);
 
 // ✅ **Basic Route**
 app.get('/', (req, res) => {

@@ -330,8 +330,9 @@ const AdminDashboard = () => {
 
   const handleManagePhotos = async (batch) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/batch-preview/${batch._id}`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/batch-preview/${batch._id}?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setSelectedPhotoBatch({ ...batch, results: data.results });
@@ -514,8 +515,9 @@ const AdminDashboard = () => {
 
   const fetchPreview = async (batchId) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/batch-preview/${batchId}`, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      const res = await fetch(`${API_URL}/api/admin/batch-preview/${batchId}?t=${Date.now()}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+        cache: 'no-store'
       });
       const data = await res.json();
       setPreviewData({ batchId, results: data.results });
@@ -899,7 +901,7 @@ const AdminDashboard = () => {
                               <h4 className="font-bold text-gray-800">{sig.role}</h4>
                               <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-full shadow-inner">
                                 <img 
-                                  src={`${API_URL}/${sig.filePath.replace(/^uploads\//, '')}`} 
+                                  src={`${API_URL}/${sig.filePath}`} 
                                   alt={sig.role} 
                                   className="max-h-full max-w-full object-contain" 
                                 />

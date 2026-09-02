@@ -185,6 +185,19 @@ const resultSchema = new mongoose.Schema({
   teacherArchived: {
     type: Boolean,
     default: false
+  },
+  // Zoho Payments Tracking
+  firstDownloadedAt: {
+    type: Date,
+    default: null
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'paid'],
+    default: 'unpaid'
+  },
+  lastPaidAt: {
+    type: Date
   }
 }, {
   timestamps: true
