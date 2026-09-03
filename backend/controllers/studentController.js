@@ -199,7 +199,7 @@ const generateCertificate = async (req, res) => {
       if (diffMinutes >= 5 && result.paymentStatus !== 'paid') {
         
         // Use the static Zoho Checkout Payment Page URL
-        const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/h2ca62fn-mwuo2mb2le0ja/TESTFORCERT";
+        const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
         // Pass the Result_ID to Zoho so the webhook knows which certificate was paid for
         const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
 
