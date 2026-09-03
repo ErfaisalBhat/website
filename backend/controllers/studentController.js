@@ -198,50 +198,16 @@ const generateCertificate = async (req, res) => {
       // If it has been more than 5 minutes AND they haven't paid
       if (diffMinutes >= 5 && result.paymentStatus !== 'paid') {
         
-        // Let's dynamically create a payment link via Zoho Payments API
-        try {
-          const apiRes = await fetch("https://payments.zoho.in/api/v1/paymentlinks", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              // Depending on Zoho's new API, it might be Bearer or Zoho-oauthtoken
-              "Authorization": `Bearer ${process.env.ZOHO_API_KEY}` 
-            },
-            body: JSON.stringify({
-              amount: 1, // Rs. 1 (Test mode)
-              currency: "INR",
-              customer: {
-                name: result.candidateNameEnglish || "Student",
-                email: req.student.email || "student@example.com"
-              },
-              reference_id: result._id.toString(), // WE NEED THIS to unlock the right certificate later
-              description: "Certificate Redownload Fee"
-            })
-          });
+        // Use the static Zoho Checkout Payment Page URL
+        const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/uelw0e36-cgd9qc5qmabi4/TESTFORCERT";
+        // Pass the Result_ID to Zoho so the webhook knows which certificate was paid for
+        const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
 
-          const data = await apiRes.json();
-          
-          if (data && data.url) {
-            // Zoho gave us a payment link
-            return res.status(403).json({
-              success: false,
-              message: "Your free download window has expired. Please pay to download again.",
-              paymentUrl: data.url
-            });
-          } else {
-            // Fallback if the API fails or auth is wrong
-            console.error("Zoho API Error:", data);
-            return res.status(403).json({
-              success: false,
-              message: "Your free download window has expired. Please pay to download again.",
-              paymentUrl: `https://checkout.zoho.in/pay/YOUR_STATIC_URL_HERE?Result_ID=${result._id}`
-            });
-          }
-
-        } catch (err) {
-          console.error("Zoho Request Error:", err);
-          return res.status(500).json({ message: "Payment setup failed." });
-        }
+        return res.status(403).json({
+          success: false,
+          message: "Your free download window has expired. Please pay to download again.",
+          paymentUrl: finalPaymentUrl
+        });
       }
     }
     // --- END ZOHO PAYMENT LOGIC ---

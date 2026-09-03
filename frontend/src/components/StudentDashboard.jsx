@@ -16,6 +16,9 @@ const StudentDashboard = () => {
   const [error, setError] = useState('');
   const [selectedResult, setSelectedResult] = useState(null);
   const [showDeclaredResults, setShowDeclaredResults] = useState(false);
+  const [showPaymentPopup, setShowPaymentPopup] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [paymentMessage, setPaymentMessage] = useState('');
   const navigate = useNavigate();
   const certificateRef = useRef();
 
@@ -106,8 +109,10 @@ const StudentDashboard = () => {
       } else if (response.status === 403) {
         const data = await response.json();
         if (data.paymentUrl) {
-          // Redirect the user to Zoho Checkout
-          window.location.href = data.paymentUrl;
+          // Show the payment popup instead of redirecting immediately
+          setPaymentUrl(data.paymentUrl);
+          setPaymentMessage(data.message || "Your free download window has expired. Please pay to download again.");
+          setShowPaymentPopup(true);
         } else {
           setError(data.message || 'Access denied');
         }
@@ -331,6 +336,37 @@ const StudentDashboard = () => {
               <div ref={certificateRef} id="printableContent" className="bg-white">
                 <CertificateTemplate certificateData={selectedResult} student={student} />
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {showPaymentPopup && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 mb-4">
+              <svg className="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Payment Required</h3>
+            <p className="text-sm text-gray-500 mb-6">{paymentMessage}</p>
+            <div className="flex gap-3 justify-center">
+              <button 
+                onClick={() => setShowPaymentPopup(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => window.location.href = paymentUrl}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Proceed to Pay
+              </button>
             </div>
           </div>
         </div>
