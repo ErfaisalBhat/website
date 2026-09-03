@@ -206,6 +206,11 @@ const resultSchema = new mongoose.Schema({
   paymentInitiatedAt: {
     type: Date,
     default: null
+  },
+  // Track if certificate PDF was already uploaded to Google Drive (to prevent duplicates)
+  certificateDriveFileId: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

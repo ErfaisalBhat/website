@@ -48,12 +48,13 @@ const StudentDashboard = () => {
       // 1. Generate PDF blob
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
       
-      // 2. Upload to Drive via Backend
+      // 2. Upload to Drive via Backend (only saved once per result — backend deduplicates)
       const token = localStorage.getItem('studentToken');
       const formData = new FormData();
       formData.append('file', pdfBlob, `${selectedResult?.rollNo || 'Certificate'}.pdf`);
       formData.append('rollNo', selectedResult?.rollNo);
       formData.append('type', 'certificate');
+      formData.append('resultId', selectedResult?._id || '');
 
       await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
         method: 'POST',

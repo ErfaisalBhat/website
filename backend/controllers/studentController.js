@@ -251,6 +251,7 @@ const generateCertificate = async (req, res) => {
     const profileImageBase64 = await imageUrlToBase64(highResUrl);
 
     const certificateData = {
+      _id: result._id,
       rollNo: result.rollNo,
       enrolmentNo: result.enrolmentNo,
       courseNameHindi: result.courseNameHindi,
@@ -283,25 +284,33 @@ const generateCertificate = async (req, res) => {
       profileImageId: profileImageBase64 || rawImageUrl
     };
 
-    // Use the signature that was active at the time the result was approved/created
-    const referenceTime = result.approvedAt || result.createdAt || new Date();
+    // Get the most recent active signature for each role
     const CertificateSignature = require('../models/CertificateSignature');
     
     const authSig = await CertificateSignature.findOne({ 
-      role: 'Verifying Authority', 
-      createdAt: { $lte: referenceTime } 
+      role: 'Verifying Authority',
+      isActive: true
     }).sort({ createdAt: -1 });
 
     const controllerSig = await CertificateSignature.findOne({ 
-      role: 'Controller of Examination', 
-      createdAt: { $lte: referenceTime } 
+      role: 'Controller of Examination',
+      isActive: true
     }).sort({ createdAt: -1 });
 
-    if (authSig) {
-      certificateData.authSignatureImage = authSig.filePath;
+    // Fallback: if no active signature, try any signature for this role
+    const authSigFallback = authSig || await CertificateSignature.findOne({ 
+      role: 'Verifying Authority'
+    }).sort({ createdAt: -1 });
+
+    const controllerSigFallback = controllerSig || await CertificateSignature.findOne({ 
+      role: 'Controller of Examination'
+    }).sort({ createdAt: -1 });
+
+    if (authSigFallback) {
+      certificateData.authSignatureImage = authSigFallback.filePath;
     }
-    if (controllerSig) {
-      certificateData.controllerSignatureImage = controllerSig.filePath;
+    if (controllerSigFallback) {
+      certificateData.controllerSignatureImage = controllerSigFallback.filePath;
     }
 
     res.json(certificateData);
