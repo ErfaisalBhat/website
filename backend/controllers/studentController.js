@@ -367,9 +367,40 @@ const verifyCertificate = async (req, res) => {
   }
 };
 
+// Called BEFORE redirecting student to Zoho — marks which result is about to be paid
+const initiatePayment = async (req, res) => {
+  try {
+    const { resultId } = req.body;
+    const { rollNo, enrolmentNo } = req.student;
+
+    const result = await Result.findOne({
+      _id: resultId,
+      rollNo,
+      enrolmentNo,
+      status: 'approved'
+    });
+
+    if (!result) {
+      return res.status(404).json({ message: 'Result not found' });
+    }
+
+    // Mark this result as "payment initiated" with a timestamp
+    result.paymentInitiated = true;
+    result.paymentInitiatedAt = new Date();
+    await result.save();
+
+    console.log(`💳 Payment initiated for Result ID: ${resultId} by Roll No: ${rollNo}`);
+    res.json({ success: true, message: 'Payment initiation recorded' });
+  } catch (error) {
+    console.error('Error initiating payment:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   verifyStudent,
   getStudentResults,
   generateCertificate,
-  verifyCertificate
+  verifyCertificate,
+  initiatePayment
 };

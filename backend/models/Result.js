@@ -198,6 +198,14 @@ const resultSchema = new mongoose.Schema({
   },
   lastPaidAt: {
     type: Date
+  },
+  paymentInitiated: {
+    type: Boolean,
+    default: false
+  },
+  paymentInitiatedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

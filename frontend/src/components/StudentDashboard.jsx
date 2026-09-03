@@ -19,6 +19,7 @@ const StudentDashboard = () => {
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [paymentMessage, setPaymentMessage] = useState('');
+  const [pendingPaymentResultId, setPendingPaymentResultId] = useState(null);
   const navigate = useNavigate();
   const certificateRef = useRef();
 
@@ -112,6 +113,7 @@ const StudentDashboard = () => {
           // Show the payment popup instead of redirecting immediately
           setPaymentUrl(data.paymentUrl);
           setPaymentMessage(data.message || "Your free download window has expired. Please pay to download again.");
+          setPendingPaymentResultId(resultId);
           setShowPaymentPopup(true);
         } else {
           setError(data.message || 'Access denied');
@@ -359,7 +361,24 @@ const StudentDashboard = () => {
                 Cancel
               </button>
               <button 
-                onClick={() => window.location.href = paymentUrl}
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('studentToken');
+                    // Tell backend this student is about to pay — records which result to unlock
+                    await fetch(`${API_URL}/api/student/initiate-payment`, {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify({ resultId: pendingPaymentResultId })
+                    });
+                  } catch (e) {
+                    console.error('Failed to initiate payment:', e);
+                  }
+                  // Redirect to Zoho payment page
+                  window.location.href = paymentUrl;
+                }}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
