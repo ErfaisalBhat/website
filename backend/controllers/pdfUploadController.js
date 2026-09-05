@@ -11,13 +11,23 @@ const uploadCertificatePdf = async (req, res) => {
     console.log(`[pdfUploadController] Received upload request. Type: ${type}, RollNo: ${rollNo}, ResultId: ${resultId}`);
 
     // ── Check if this certificate was already saved to Drive ──────────────────
-    // Only upload once; subsequent downloads skip the Drive upload silently.
+    // Strip volatile PDF metadata (CreationDate) so the hash is stable across multiple downloads
+    // of the exact same certificate content.
+    const crypto = require('crypto');
+    // Strip volatile PDF metadata (CreationDate, ModDate, and random Document ID) 
+    // so the hash is stable across multiple downloads of the exact same visual content.
+    const cleanBuffer = req.file.buffer.toString('binary')
+      .replace(/\/CreationDate \(D:.*?\)/g, '')
+      .replace(/\/ModDate \(D:.*?\)/g, '')
+      .replace(/\/ID \[\<.*?\>\s*\<.*?\>\]/g, '');
+    const currentHash = crypto.createHash('md5').update(cleanBuffer, 'binary').digest('hex');
+
     if (resultId && type === 'certificate') {
-      const existing = await Result.findById(resultId).select('certificateDriveFileId').lean();
-      if (existing && existing.certificateDriveFileId) {
-        console.log(`[pdfUploadController] Certificate already on Drive (fileId: ${existing.certificateDriveFileId}). Skipping upload.`);
+      const existing = await Result.findById(resultId).select('certificateDriveFileId certificateDriveHash').lean();
+      if (existing && existing.certificateDriveFileId && existing.certificateDriveHash === currentHash) {
+        console.log(`[pdfUploadController] Certificate content unchanged (hash match). Skipping upload.`);
         return res.json({
-          message: 'Certificate already saved to Google Drive (skipped duplicate upload)',
+          message: 'Certificate unchanged (skipped duplicate upload)',
           fileId: existing.certificateDriveFileId,
           alreadySaved: true
         });
@@ -47,9 +57,12 @@ const uploadCertificatePdf = async (req, res) => {
       folderId
     });
 
-    // ── Record Drive file ID on the Result so we never upload again ───────────
+    // ── Record Drive file ID and content hash so we don't upload identical copies again
     if (resultId && type === 'certificate') {
-      await Result.findByIdAndUpdate(resultId, { certificateDriveFileId: driveResult.fileId });
+      await Result.findByIdAndUpdate(resultId, { 
+        certificateDriveFileId: driveResult.fileId,
+        certificateDriveHash: currentHash
+      });
       console.log(`[pdfUploadController] Saved certificateDriveFileId: ${driveResult.fileId} on result ${resultId}`);
     }
     // ─────────────────────────────────────────────────────────────────────────

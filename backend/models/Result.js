@@ -211,6 +211,10 @@ const resultSchema = new mongoose.Schema({
   certificateDriveFileId: {
     type: String,
     default: null
+  },
+  certificateDriveHash: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true
