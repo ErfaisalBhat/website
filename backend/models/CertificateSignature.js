@@ -3,7 +3,11 @@ const mongoose = require('mongoose');
 const CertificateSignatureSchema = new mongoose.Schema({
   filePath: {
     type: String,
-    required: true
+    default: ''
+  },
+  imageData: {
+    type: String, // base64 data URL e.g. "data:image/png;base64,..."
+    default: ''
   },
   signatoryLabel: {
     type: String,

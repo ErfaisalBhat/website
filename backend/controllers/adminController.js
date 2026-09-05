@@ -560,6 +560,10 @@ const uploadCertificateSignature = async (req, res) => {
       return res.status(400).json({ message: 'Only PNG images are allowed' });
     }
 
+    // Convert to base64 data URL — stored in MongoDB so no filesystem needed
+    const imageData = `data:image/png;base64,${req.file.buffer.toString('base64')}`;
+
+    // Also write to disk as fallback
     const filename = `cert-sig-${role.replace(/\s+/g, '')}-${Date.now()}.png`;
     const uploadPath = path.join(__dirname, '../uploads', filename);
 
@@ -576,6 +580,7 @@ const uploadCertificateSignature = async (req, res) => {
 
     const newSignature = await CertificateSignature.create({
       filePath: filePath,
+      imageData: imageData,
       role: role,
       signatoryLabel: role,
       isActive: true,

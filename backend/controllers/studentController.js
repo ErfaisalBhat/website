@@ -307,23 +307,35 @@ const generateCertificate = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (authSigFallback) {
-      const sigPath = path.join(__dirname, '..', authSigFallback.filePath);
-      if (fs.existsSync(sigPath)) {
-        const ext = path.extname(sigPath).slice(1) || 'png';
-        const buffer = fs.readFileSync(sigPath);
-        certificateData.authSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+      if (authSigFallback.imageData) {
+        // Use base64 stored in MongoDB — works on any environment, no filesystem needed
+        certificateData.authSignatureImage = authSigFallback.imageData;
       } else {
-        certificateData.authSignatureImage = authSigFallback.filePath;
+        // Legacy fallback: read from disk
+        const sigPath = path.join(__dirname, '..', authSigFallback.filePath);
+        if (fs.existsSync(sigPath)) {
+          const ext = path.extname(sigPath).slice(1) || 'png';
+          const buffer = fs.readFileSync(sigPath);
+          certificateData.authSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+        } else {
+          certificateData.authSignatureImage = authSigFallback.filePath;
+        }
       }
     }
     if (controllerSigFallback) {
-      const sigPath = path.join(__dirname, '..', controllerSigFallback.filePath);
-      if (fs.existsSync(sigPath)) {
-        const ext = path.extname(sigPath).slice(1) || 'png';
-        const buffer = fs.readFileSync(sigPath);
-        certificateData.controllerSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+      if (controllerSigFallback.imageData) {
+        // Use base64 stored in MongoDB — works on any environment, no filesystem needed
+        certificateData.controllerSignatureImage = controllerSigFallback.imageData;
       } else {
-        certificateData.controllerSignatureImage = controllerSigFallback.filePath;
+        // Legacy fallback: read from disk
+        const sigPath = path.join(__dirname, '..', controllerSigFallback.filePath);
+        if (fs.existsSync(sigPath)) {
+          const ext = path.extname(sigPath).slice(1) || 'png';
+          const buffer = fs.readFileSync(sigPath);
+          certificateData.controllerSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+        } else {
+          certificateData.controllerSignatureImage = controllerSigFallback.filePath;
+        }
       }
     }
 

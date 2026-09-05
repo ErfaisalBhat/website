@@ -233,14 +233,18 @@ const AdminDashboard = () => {
   };
 
   const handleDeactivateCertSignature = async (id) => {
+    if (!window.confirm('Are you sure you want to deactivate this signature?')) return;
     try {
-      const res = await fetch(`${API_URL}/api/admin/signature/${id}/deactivate`, {
-        method: 'POST',
+      const res = await fetch(`${API_URL}/api/admin/signature/${id}`, {
+        method: 'DELETE',
         headers: { Authorization: `Bearer ${user.token}` }
       });
+      const data = await res.json();
       if (res.ok) {
         toast.success('Certificate Signature deactivated');
         fetchActiveCertSignature();
+      } else {
+        toast.error(data.message || 'Deactivation failed');
       }
     } catch (error) {
       toast.error('Error deactivating signature');
@@ -901,7 +905,7 @@ const AdminDashboard = () => {
                               <h4 className="font-bold text-gray-800">{sig.role}</h4>
                               <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-full shadow-inner">
                                 <img 
-                                  src={`${API_URL}/${sig.filePath}`} 
+                                  src={sig.imageData || `${API_URL}/${sig.filePath}`} 
                                   alt={sig.role} 
                                   className="max-h-full max-w-full object-contain" 
                                 />
