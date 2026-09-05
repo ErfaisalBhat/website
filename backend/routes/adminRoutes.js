@@ -59,5 +59,6 @@ router.put('/teacher-password/:teacherId', changeTeacherPassword);
 router.post('/signature', upload.single('file'), uploadCertificateSignature);
 router.get('/signature', getActiveCertificateSignature);
 router.delete('/signature/:id', deactivateCertificateSignature);
+router.post('/signature/:id/deactivate', deactivateCertificateSignature);
 
 module.exports = router;

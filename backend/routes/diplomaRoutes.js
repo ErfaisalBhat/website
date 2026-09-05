@@ -38,5 +38,6 @@ router.delete('/:id', protect, admin, deleteDiploma);
 router.post('/signature', protect, admin, upload.single('file'), uploadSignature);
 router.get('/signature', protect, admin, getActiveSignature);
 router.delete('/signature/:id', protect, admin, deactivateSignature);
+router.post('/signature/:id/deactivate', protect, admin, deactivateSignature);
 
 module.exports = router;

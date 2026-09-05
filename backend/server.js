@@ -38,6 +38,7 @@ app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ✅ **Debugging Middleware (Logs Every Request)**
 app.use((req, res, next) => {

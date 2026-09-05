@@ -151,7 +151,7 @@ const VerifyCertificate = () => {
                             src={
                               result.profileImageId.startsWith('http') || result.profileImageId.startsWith('data:')
                                 ? result.profileImageId
-                                : `${API_URL}/uploads/${result.profileImageId}`
+                                : `${API_URL}/api/uploads/${result.profileImageId}`
                             }
                             alt="Student" 
                             className="w-32 h-40 object-cover rounded-lg border-2 border-gray-100 shadow-md"

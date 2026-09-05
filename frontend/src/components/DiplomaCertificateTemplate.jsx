@@ -309,7 +309,7 @@ const DiplomaCertificateTemplate = ({ certificateData }) => {
             <div className="sign-block">
               <div className="sign-box">
                 {activeSignature?.filePath && (
-                  <img src={`${API_URL}/${activeSignature.filePath}`} alt="Signature" />
+                  <img src={`${API_URL}/api/${activeSignature.filePath}`} alt="Signature" />
                 )}
               </div>
               <span className="sign-label">{activeSignature?.signatoryLabel || 'O.S.D. (Examination)'}</span>

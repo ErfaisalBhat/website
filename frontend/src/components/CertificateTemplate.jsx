@@ -21,7 +21,7 @@ const CertificateTemplate = ({ certificateData }) => {
     : null;
 
   // Signature image sources — use uploaded file if available, else fall back to static file
-  // The backend serves uploads/ folder via the /uploads route
+  // The backend serves uploads/ folder via the /uploads route (NOT /api/uploads)
   const controllerSigSrc = controllerSignatureImage
     ? (controllerSignatureImage.startsWith('data:') || controllerSignatureImage.startsWith('http')
         ? controllerSignatureImage

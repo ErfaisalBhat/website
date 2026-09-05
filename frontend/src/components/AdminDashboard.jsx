@@ -234,8 +234,8 @@ const AdminDashboard = () => {
 
   const handleDeactivateCertSignature = async (id) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/signature/${id}`, {
-        method: 'DELETE',
+      const res = await fetch(`${API_URL}/api/admin/signature/${id}/deactivate`, {
+        method: 'POST',
         headers: { Authorization: `Bearer ${user.token}` }
       });
       if (res.ok) {
@@ -282,8 +282,8 @@ const AdminDashboard = () => {
   const handleDeactivateSignature = async (id) => {
     if (!window.confirm('Are you sure you want to deactivate this signature?')) return;
     try {
-      const res = await fetch(`${API_URL}/api/diplomas/signature/${id}`, {
-        method: 'DELETE',
+      const res = await fetch(`${API_URL}/api/diplomas/signature/${id}/deactivate`, {
+        method: 'POST',
         headers: { Authorization: `Bearer ${user.token}` }
       });
       if (res.ok) {
@@ -964,10 +964,21 @@ const AdminDashboard = () => {
                             className="absolute inset-0 opacity-0 cursor-pointer" 
                             accept="image/png" 
                           />
-                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-sm text-gray-600">
-                            {certSignatureFile ? <span className="text-blue-600 font-bold">{certSignatureFile.name}</span> : "Click or drag to upload PNG signature"}
-                          </p>
+                          {certSignatureFile ? (
+                            <>
+                              <img
+                                src={URL.createObjectURL(certSignatureFile)}
+                                alt="Signature preview"
+                                className="max-h-24 mx-auto mb-3 object-contain bg-gray-100 rounded-lg p-2"
+                              />
+                              <p className="text-sm text-blue-600 font-bold">{certSignatureFile.name}</p>
+                            </>
+                          ) : (
+                            <>
+                              <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                              <p className="text-sm text-gray-600">Click or drag to upload PNG signature</p>
+                            </>
+                          )}
                         </div>
                       </div>
                       <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
@@ -1106,7 +1117,7 @@ const AdminDashboard = () => {
                                       src={
                                         r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
                                           ? r.student.profileImageId
-                                          : `${API_URL}/uploads/${r.student.profileImageId}`
+                                          : `${API_URL}/api/uploads/${r.student.profileImageId}`
                                       }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
@@ -1366,7 +1377,7 @@ const AdminDashboard = () => {
                                       src={
                                         r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
                                           ? r.student.profileImageId
-                                          : `${API_URL}/uploads/${r.student.profileImageId}`
+                                          : `${API_URL}/api/uploads/${r.student.profileImageId}`
                                       }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
@@ -1445,7 +1456,7 @@ const AdminDashboard = () => {
                                   src={
                                     student.profileImageId.startsWith('http') || student.profileImageId.startsWith('data:')
                                       ? student.profileImageId
-                                      : `${API_URL}/uploads/${student.profileImageId}`
+                                      : `${API_URL}/api/uploads/${student.profileImageId}`
                                   }
                                   alt="" 
                                   className="w-12 h-12 rounded-lg object-cover border"
@@ -1705,7 +1716,7 @@ const AdminDashboard = () => {
                         <div className="space-y-4">
                           <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-64 shadow-inner">
                             <img 
-                              src={`${API_URL}/${activeSignature.filePath.replace(/^uploads\//, '')}`} 
+                              src={`${API_URL}/api/${activeSignature.filePath}`} 
                               alt="Active Signature" 
                               className="max-h-full max-w-full object-contain" 
                             />
@@ -1740,14 +1751,21 @@ const AdminDashboard = () => {
                             className="absolute inset-0 opacity-0 cursor-pointer" 
                             accept="image/png" 
                           />
-                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-sm text-gray-600">
-                            {signatureFile ? (
-                              <span className="text-blue-600 font-bold">{signatureFile.name}</span>
-                            ) : (
-                              "Click or drag to select a PNG signature file"
-                            )}
-                          </p>
+                          {signatureFile ? (
+                            <>
+                              <img
+                                src={URL.createObjectURL(signatureFile)}
+                                alt="Signature preview"
+                                className="max-h-24 mx-auto mb-3 object-contain bg-gray-100 rounded-lg p-2"
+                              />
+                              <p className="text-sm text-blue-600 font-bold">{signatureFile.name}</p>
+                            </>
+                          ) : (
+                            <>
+                              <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                              <p className="text-sm text-gray-600">Click or drag to select a PNG signature file</p>
+                            </>
+                          )}
                           <p className="text-xs text-gray-400 mt-2">Only transparent background PNG images are recommended</p>
                         </div>
                       </div>
