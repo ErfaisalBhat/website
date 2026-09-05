@@ -23,10 +23,14 @@ const CertificateTemplate = ({ certificateData }) => {
   // Signature image sources — use uploaded file if available, else fall back to static file
   // The backend serves uploads/ folder via the /uploads route
   const controllerSigSrc = controllerSignatureImage
-    ? `${API_URL}/${controllerSignatureImage}`
+    ? (controllerSignatureImage.startsWith('data:') || controllerSignatureImage.startsWith('http')
+        ? controllerSignatureImage
+        : `${API_URL}/${controllerSignatureImage}`)
     : '/Signature.png';
   const authSigSrc = authSignatureImage
-    ? `${API_URL}/${authSignatureImage}`
+    ? (authSignatureImage.startsWith('data:') || authSignatureImage.startsWith('http')
+        ? authSignatureImage
+        : `${API_URL}/${authSignatureImage}`)
     : '/BKG Signature.png';
   const formatCertNo = (certNo, roll) => {
     if (!certNo) return '';

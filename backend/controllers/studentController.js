@@ -307,10 +307,24 @@ const generateCertificate = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (authSigFallback) {
-      certificateData.authSignatureImage = authSigFallback.filePath;
+      const sigPath = path.join(__dirname, '..', authSigFallback.filePath);
+      if (fs.existsSync(sigPath)) {
+        const ext = path.extname(sigPath).slice(1) || 'png';
+        const buffer = fs.readFileSync(sigPath);
+        certificateData.authSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+      } else {
+        certificateData.authSignatureImage = authSigFallback.filePath;
+      }
     }
     if (controllerSigFallback) {
-      certificateData.controllerSignatureImage = controllerSigFallback.filePath;
+      const sigPath = path.join(__dirname, '..', controllerSigFallback.filePath);
+      if (fs.existsSync(sigPath)) {
+        const ext = path.extname(sigPath).slice(1) || 'png';
+        const buffer = fs.readFileSync(sigPath);
+        certificateData.controllerSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+      } else {
+        certificateData.controllerSignatureImage = controllerSigFallback.filePath;
+      }
     }
 
     res.json(certificateData);
