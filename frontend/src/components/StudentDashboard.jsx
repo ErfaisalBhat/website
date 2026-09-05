@@ -56,11 +56,17 @@ const StudentDashboard = () => {
       formData.append('type', 'certificate');
       formData.append('resultId', selectedResult?._id || '');
 
-      await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
+      const res = await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("Drive upload failed:", res.status, errorText);
+        alert(`Note: Certificate downloaded locally, but failed to save to Google Drive (Error ${res.status}). Ensure the PDF size isn't blocked by your server.`);
+      }
 
       // 3. Download to user's device
       await html2pdf().set(opt).from(element).save();
