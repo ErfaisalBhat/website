@@ -12,7 +12,8 @@ const {
   deleteDiploma,
   uploadSignature,
   getActiveSignature,
-  deactivateSignature
+  deactivateSignature,
+  saveToDrive
 } = require('../controllers/diplomaController');
 
 const { uploadCertificatePdf } = require('../controllers/pdfUploadController');
@@ -32,6 +33,7 @@ router.post('/upload', protect, admin, upload.single('file'), uploadDiplomas);
 router.get('/list', protect, admin, listDiplomas);
 router.get('/bulk-download', protect, admin, bulkDownload);
 router.get('/download/:id', protect, admin, downloadDiplomaPDF);
+router.post('/save-to-drive/:id', protect, admin, saveToDrive);
 router.delete('/:id', protect, admin, deleteDiploma);
 
 // Signature management endpoints

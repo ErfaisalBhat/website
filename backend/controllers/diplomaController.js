@@ -7,6 +7,7 @@ const { generateCertificatePDF, generateBulkCertificates } = require('../utils/c
 const path = require('path');
 const fs = require('fs');
 const { parseCertificateCSV } = require('../utils/csvTemplate');
+const { uploadFileToDrive } = require('../utils/googleDriveUploader');
 
 // Helper to parse "Obt/Max" strings
 const parseMarks = (val) => {
@@ -95,6 +96,32 @@ const uploadDiplomas = async (req, res) => {
 
     const processed = [];
 
+    // Find the current highest sequence number for each academicYear across all records
+    // Cache it per year so the whole batch stays consistent without extra DB hits per row
+    const seqCache = {};
+
+    const getNextSeq = async (academicYear) => {
+      if (seqCache[academicYear] === undefined) {
+        // Find the highest existing sequence number for this year prefix
+        // Cert format: "2026-27/ROLLNO/001"
+        const prefix = `${academicYear}/`;
+        const escapedPrefix = prefix.replace(/[-[\]/{}()*+?.\\^$|]/g, '\\$&');
+        const last = await DiplomaCertificate.findOne({
+          certificateNo: { $regex: `^${escapedPrefix}` }
+        }).sort({ certificateNo: -1 });
+
+        let lastSeq = 0;
+        if (last) {
+          const parts = last.certificateNo.split('/');
+          const seq = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(seq)) lastSeq = seq;
+        }
+        seqCache[academicYear] = lastSeq;
+      }
+      seqCache[academicYear] += 1;
+      return seqCache[academicYear];
+    };
+
     for (const item of valid) {
       const {
         rollNo,
@@ -108,12 +135,15 @@ const uploadDiplomas = async (req, res) => {
         examFlag,
         academicYear,
         dateOfResult,
-        certificateNumber,
         papers,
         totalMax,
         totalObtained,
         division
       } = item;
+
+      // ── Auto-generate certificate number: "2026-27/ROLLNO/001" ──
+      const seqNum = await getNextSeq(academicYear);
+      const certificateNumber = `${academicYear}/${rollNo}/${String(seqNum).padStart(3, '0')}`;
 
       // Prepare marksData JSON matching certificateTemplate.js
       const marksData = {
@@ -298,6 +328,29 @@ const bulkDownload = async (req, res) => {
 
     const pdfPaths = await generateBulkCertificates(studentsData, bgImagePath, outDir);
 
+    // --- Upload each PDF to Google Drive ---
+    for (let i = 0; i < pdfPaths.length; i++) {
+      const pdfPath = pdfPaths[i];
+      const cert = certs[i];
+      try {
+        const pdfBuffer = fs.readFileSync(pdfPath);
+        const fileName = path.basename(pdfPath);
+        const { fileId, webViewLink } = await uploadFileToDrive({
+          buffer: pdfBuffer,
+          mimeType: 'application/pdf',
+          fileName,
+          folderId: process.env.GOOGLE_DRIVE_DIPLOMA_FOLDER_ID
+        });
+        cert.driveFileId = fileId;
+        cert.driveUrl = webViewLink;
+        await cert.save();
+        console.log(`✅ Bulk Drive upload: ${fileName} → ${webViewLink}`);
+      } catch (driveErr) {
+        console.error(`⚠️ Drive upload failed for ${path.basename(pdfPath)}:`, driveErr.message);
+      }
+    }
+    // --- End Drive Upload ---
+
     const zip = new JSZip();
     pdfPaths.forEach(pdfPath => {
       const filename = path.basename(pdfPath);
@@ -367,6 +420,26 @@ const downloadDiplomaPDF = async (req, res) => {
     };
 
     await generateCertificatePDF(studentData, bgImagePath, outputPath);
+
+    // --- Upload to Google Drive ---
+    try {
+      const pdfBuffer = fs.readFileSync(outputPath);
+      const fileName = `${cert.rollNo}_${cert.candidateName.replace(/\s+/g, '_')}_Diploma.pdf`;
+      const { fileId, webViewLink } = await uploadFileToDrive({
+        buffer: pdfBuffer,
+        mimeType: 'application/pdf',
+        fileName,
+        folderId: process.env.GOOGLE_DRIVE_DIPLOMA_FOLDER_ID
+      });
+      // Persist Drive info on the certificate record
+      cert.driveFileId = fileId;
+      cert.driveUrl = webViewLink;
+      await cert.save();
+      console.log(`✅ Diploma PDF uploaded to Drive: ${webViewLink}`);
+    } catch (driveErr) {
+      console.error('⚠️ Drive upload failed (PDF will still download):', driveErr.message);
+    }
+    // --- End Drive Upload ---
 
     res.download(outputPath, `${cert.rollNo}_${cert.candidateName.replace(/\s+/g, '_')}_Diploma.pdf`, (err) => {
       if (err) {
@@ -458,6 +531,75 @@ const deactivateSignature = async (req, res) => {
   }
 };
 
+// Dedicated Drive-upload endpoint (returns JSON, no file stream)
+// Called fire-and-forget from the frontend on Print Preview clicks.
+const saveToDrive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cert = await DiplomaCertificate.findById(id);
+    if (!cert) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    const bgImagePath = path.join(__dirname, '../../frontend/public/Blue.png');
+    // Use a unique temp filename to avoid collisions from concurrent requests
+    const outputPath = path.join(__dirname, `../uploads/${cert.rollNo}_${Date.now()}_drive.pdf`);
+
+    const activeSig = await Signature.findOne({ isActive: true });
+    let signaturePath = '';
+    let signatoryLabel = '';
+    if (activeSig) {
+      signaturePath = path.join(__dirname, '..', activeSig.filePath);
+      signatoryLabel = activeSig.signatoryLabel;
+    }
+
+    const studentData = {
+      rollNo: cert.rollNo,
+      candidateName: cert.candidateName,
+      fatherName: cert.fatherName,
+      courseName: cert.courseName,
+      semester: cert.semester,
+      part: cert.marksData?.part || 'I',
+      examSession: cert.marksData?.session || '',
+      examFlag: cert.marksData?.examFlag || '',
+      academicYear: cert.academicYear,
+      dateOfResult: cert.marksData?.dateOfResult || '',
+      certificateNumber: cert.certificateNo,
+      papers: cert.marksData?.papers || [],
+      totalMax: cert.marksData?.overallMax || 0,
+      totalObtained: cert.marksData?.overallObt || 0,
+      division: cert.division,
+      signatureImage: signaturePath,
+      signatoryLabel: signatoryLabel
+    };
+
+    await generateCertificatePDF(studentData, bgImagePath, outputPath);
+
+    const pdfBuffer = fs.readFileSync(outputPath);
+    const fileName = `${cert.rollNo}_${cert.candidateName.replace(/\s+/g, '_')}_Diploma.pdf`;
+
+    const { fileId, webViewLink } = await uploadFileToDrive({
+      buffer: pdfBuffer,
+      mimeType: 'application/pdf',
+      fileName,
+      folderId: process.env.GOOGLE_DRIVE_DIPLOMA_FOLDER_ID
+    });
+
+    cert.driveFileId = fileId;
+    cert.driveUrl = webViewLink;
+    await cert.save();
+
+    // Clean up temp file
+    try { fs.unlinkSync(outputPath); } catch (e) {}
+
+    console.log(`✅ Drive save (preview): ${fileName} → ${webViewLink}`);
+    return res.status(200).json({ fileId, driveUrl: webViewLink });
+  } catch (error) {
+    console.error('saveToDrive error:', error.message);
+    return res.status(500).json({ message: 'Drive upload failed', error: error.message });
+  }
+};
+
 module.exports = {
   uploadDiplomas,
   listDiplomas,
@@ -468,5 +610,6 @@ module.exports = {
   deleteDiploma,
   uploadSignature,
   getActiveSignature,
-  deactivateSignature
+  deactivateSignature,
+  saveToDrive
 };

@@ -1648,14 +1648,35 @@ const AdminDashboard = () => {
                         <h2 className="text-2xl font-bold text-gray-800">Diploma Certificates</h2>
                         <p className="text-gray-500">Manage and preview generated student diplomas.</p>
                       </div>
-                      <a 
-                        href={`${API_URL}/api/diplomas/bulk-download?t=${Date.now()}`}
-                        download
+                      <button
+                        onClick={async () => {
+                          const toastId = toast.loading('Generating bulk ZIP...');
+                          try {
+                            const res = await fetch(`${API_URL}/api/diplomas/bulk-download`, {
+                              headers: { Authorization: `Bearer ${user.token}` }
+                            });
+                            if (!res.ok) {
+                              const err = await res.json();
+                              toast.error(err.message || 'Bulk download failed', { id: toastId });
+                              return;
+                            }
+                            const blob = await res.blob();
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'diploma_certificates.zip';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            toast.success('ZIP downloaded!', { id: toastId });
+                          } catch (err) {
+                            toast.error('Bulk download failed', { id: toastId });
+                          }
+                        }}
                         className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 shadow-md flex items-center gap-2 text-sm border"
                       >
                         <CloudArrowUpIcon className="w-5 h-5" />
                         Download Bulk ZIP
-                      </a>
+                      </button>
                     </div>
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
                       <table className="w-full text-left">
@@ -2024,7 +2045,15 @@ const AdminDashboard = () => {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
               <h3 className="text-lg font-bold text-gray-800">Diploma Preview</h3>
               <div className="flex gap-3">
-                <button onClick={() => handlePrintDiploma()}
+                <button onClick={() => {
+                    // Fire dedicated Drive-upload to background (returns JSON, no stream)
+                    fetch(`${API_URL}/api/diplomas/save-to-drive/${selectedDiploma._id}`, {
+                      method: 'POST',
+                      headers: { Authorization: `Bearer ${user.token}` }
+                    }).catch(e => console.warn('Drive save failed:', e));
+                    // Print immediately — no blocking
+                    handlePrintDiploma();
+                  }}
                   className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2 shadow-sm transition-colors text-sm font-bold">
                   Print Preview
                 </button>

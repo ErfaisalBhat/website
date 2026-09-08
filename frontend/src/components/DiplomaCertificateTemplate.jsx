@@ -333,7 +333,7 @@ const DiplomaCertificateTemplate = ({ certificateData }) => {
           </div>
 
           <div className="footer-verify">
-            <div style={{ fontSize: "10px" }}>(This certificate can be verified online using Certificate No. <b>{certificateNo}</b> at the Institute's certificate verification portal.)</div>
+            <div style={{ fontSize: "10px" }}>(This certificate is digitally issued and printing it is invalid without the Institute hologram.)</div>
           </div>
         </div>
       </div>

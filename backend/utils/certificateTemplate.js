@@ -404,7 +404,7 @@ async function generateCertificatePDF(data, bgImagePath, outputPath) {
   });
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.pdf({
       path: outputPath,
       format: 'A4',
@@ -437,7 +437,7 @@ async function generateBulkCertificates(studentsData, bgImagePath, outDir) {
     for (const data of studentsData) {
       const html = generateCertificateHTML(data, bgImagePath);
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
       const fileName = `${data.rollNo}_${(data.candidateName || '').replace(/\s+/g, '_')}_Diploma.pdf`;
       const outputPath = path.join(outDir, fileName);

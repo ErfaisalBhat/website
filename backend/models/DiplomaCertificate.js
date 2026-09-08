@@ -49,6 +49,14 @@ const diplomaCertificateSchema = new mongoose.Schema({
   issuedAt: {
     type: Date,
     default: Date.now
+  },
+  driveFileId: {
+    type: String,
+    default: ''
+  },
+  driveUrl: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true
