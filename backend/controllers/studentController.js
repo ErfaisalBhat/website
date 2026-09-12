@@ -183,32 +183,50 @@ const generateCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Result not found' });
     }
 
-    // --- ZOHO PAYMENT LOGIC (5 MINUTE TEST MODE) ---
+    // --- ZOHO PAYMENT LOGIC ---
+    // Change FREE_PERIOD_MINUTES to (180 * 24 * 60) for production (180 days)
+    const FREE_PERIOD_MINUTES = 5;
     const currentDate = new Date();
-    
+    const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
+    const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
+
     if (!result.firstDownloadedAt) {
-      // First download! Start the timer
+      // First ever download — start the free period
       result.firstDownloadedAt = currentDate;
       await result.save();
     } else {
-      // Check how long it's been since the first download
       const diffTime = Math.abs(currentDate - result.firstDownloadedAt);
-      const diffMinutes = Math.floor(diffTime / (1000 * 60)); // For production, change to diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
 
-      // If it has been more than 5 minutes AND they haven't paid
-      if (diffMinutes >= 5 && result.paymentStatus !== 'paid') {
-        
-        // Use the static Zoho Checkout Payment Page URL
-        const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
-        // Pass the Result_ID to Zoho so the webhook knows which certificate was paid for
-        const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
+      if (diffMinutes >= FREE_PERIOD_MINUTES) {
+        if (result.paymentStatus === 'paid' && result.lastPaidAt) {
+          // Student has paid — check if the paid period has also expired
+          const paidDiff = Math.abs(currentDate - result.lastPaidAt);
+          const paidDiffMinutes = Math.floor(paidDiff / (1000 * 60));
 
-        return res.status(403).json({
-          success: false,
-          message: "Your free download window has expired. Please pay to download again.",
-          paymentUrl: finalPaymentUrl
-        });
+          if (paidDiffMinutes >= FREE_PERIOD_MINUTES) {
+            // Paid period expired — reset for a new cycle, must pay again
+            result.paymentStatus = 'unpaid';
+            result.transactionId = null;
+            await result.save();
+
+            return res.status(403).json({
+              success: false,
+              message: "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.",
+              paymentUrl: finalPaymentUrl
+            });
+          }
+          // else: still within paid period — allow download
+        } else {
+          // Free period expired and not paid — block
+          return res.status(403).json({
+            success: false,
+            message: "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.",
+            paymentUrl: finalPaymentUrl
+          });
+        }
       }
+      // else: still within free period — allow download
     }
     // --- END ZOHO PAYMENT LOGIC ---
 
@@ -238,6 +256,28 @@ const generateCertificate = async (req, res) => {
       const seqStr = String(nextNum).padStart(3, '0');
       result.certificateNo = `${prefix}${seqStr}`;
       result.issuedAt = new Date();
+
+      // --- Snapshot current active signatures at FIRST DOWNLOAD time ---
+      // This freezes the signature/label permanently for this result so that
+      // future signature updates don't affect already-issued certificates.
+      // Records that haven't been downloaded yet will always pick up the
+      // latest active signature when they are first downloaded.
+      const CertificateSignatureSnap = require('../models/CertificateSignature');
+      const authSnapSig = await CertificateSignatureSnap.findOne({ role: 'Verifying Authority', isActive: true })
+        .sort({ createdAt: -1 });
+      const controllerSnapSig = await CertificateSignatureSnap.findOne({ role: 'Controller of Examination', isActive: true })
+        .sort({ createdAt: -1 });
+
+      if (authSnapSig) {
+        result.snapshotAuthSignatureImage = authSnapSig.imageData || null;
+        result.snapshotAuthSignatureLabel = authSnapSig.signatoryLabel || 'O.S.D. (Examination)';
+      }
+      if (controllerSnapSig) {
+        result.snapshotControllerSignatureImage = controllerSnapSig.imageData || null;
+        result.snapshotControllerSignatureLabel = controllerSnapSig.signatoryLabel || 'Controller of Examination';
+      }
+      // --- End snapshot ---
+
       await result.save();
     }
 
@@ -284,60 +324,121 @@ const generateCertificate = async (req, res) => {
       profileImageId: profileImageBase64 || rawImageUrl
     };
 
-    // Get the most recent active signature for each role
+    // --- Signature Resolution (3-tier) ---
+    //
+    // Tier 1 — Frozen snapshot: set at first-download time for all records issued
+    //           after this feature was deployed. Never changes.
+    //
+    // Tier 2 — Legacy backfill: for records that already had a certificateNo BEFORE
+    //           this feature existed, find the signature that was created on or before
+    //           result.issuedAt (i.e. the one that was actually in the DB when the
+    //           cert was first produced). Save it as the snapshot so it is frozen
+    //           from this point forward and the lookup never runs again.
+    //
+    // Tier 3 — Live active: only for brand-new records not yet issued (no certificateNo).
+    //           These are handled above in the certificateNo block (snapshot taken there).
+    //           This tier is a safety net.
+    //
     const CertificateSignature = require('../models/CertificateSignature');
-    
-    const authSig = await CertificateSignature.findOne({ 
-      role: 'Verifying Authority',
-      isActive: true
-    }).sort({ createdAt: -1 });
+    let needsLegacySave = false;
 
-    const controllerSig = await CertificateSignature.findOne({ 
-      role: 'Controller of Examination',
-      isActive: true
-    }).sort({ createdAt: -1 });
+    // ── Auth Signature ──────────────────────────────────────────────────────────
+    if (result.snapshotAuthSignatureImage || result.snapshotAuthSignatureLabel) {
+      // Tier 1: use the frozen snapshot
+      certificateData.authSignatureLabel = result.snapshotAuthSignatureLabel || 'O.S.D. (Examination)';
+      certificateData.authSignatureImage = result.snapshotAuthSignatureImage || null;
 
-    // Fallback: if no active signature, try any signature for this role
-    const authSigFallback = authSig || await CertificateSignature.findOne({ 
-      role: 'Verifying Authority'
-    }).sort({ createdAt: -1 });
+    } else if (result.issuedAt) {
+      // Tier 2: legacy record — find the signature that existed at issuance time
+      const legacyAuthSig = await CertificateSignature.findOne({
+        role: 'Verifying Authority',
+        createdAt: { $lte: result.issuedAt }
+      }).sort({ createdAt: -1 });
 
-    const controllerSigFallback = controllerSig || await CertificateSignature.findOne({ 
-      role: 'Controller of Examination'
-    }).sort({ createdAt: -1 });
+      const legacyAuth = legacyAuthSig || await CertificateSignature.findOne({ role: 'Verifying Authority' })
+        .sort({ createdAt: 1 }); // oldest as last resort
 
-    if (authSigFallback) {
-      if (authSigFallback.imageData) {
-        // Use base64 stored in MongoDB — works on any environment, no filesystem needed
-        certificateData.authSignatureImage = authSigFallback.imageData;
-      } else {
-        // Legacy fallback: read from disk
-        const sigPath = path.join(__dirname, '..', authSigFallback.filePath);
-        if (fs.existsSync(sigPath)) {
-          const ext = path.extname(sigPath).slice(1) || 'png';
-          const buffer = fs.readFileSync(sigPath);
-          certificateData.authSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+      if (legacyAuth) {
+        certificateData.authSignatureLabel = legacyAuth.signatoryLabel || 'O.S.D. (Examination)';
+        if (legacyAuth.imageData) {
+          certificateData.authSignatureImage = legacyAuth.imageData;
         } else {
-          certificateData.authSignatureImage = authSigFallback.filePath;
+          const sigPath = path.join(__dirname, '..', legacyAuth.filePath);
+          if (fs.existsSync(sigPath)) {
+            const ext = path.extname(sigPath).slice(1) || 'png';
+            const buffer = fs.readFileSync(sigPath);
+            certificateData.authSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+          } else {
+            certificateData.authSignatureImage = legacyAuth.filePath;
+          }
         }
+        // Freeze as snapshot so this path never runs again for this record
+        result.snapshotAuthSignatureImage = certificateData.authSignatureImage;
+        result.snapshotAuthSignatureLabel = certificateData.authSignatureLabel;
+        needsLegacySave = true;
+      }
+
+    } else {
+      // Tier 3: safety net — new record not yet issued (snapshot taken in certificateNo block above)
+      const liveSig = await CertificateSignature.findOne({ role: 'Verifying Authority', isActive: true })
+        .sort({ createdAt: -1 });
+      if (liveSig) {
+        certificateData.authSignatureLabel = liveSig.signatoryLabel || 'O.S.D. (Examination)';
+        certificateData.authSignatureImage = liveSig.imageData || liveSig.filePath || null;
       }
     }
-    if (controllerSigFallback) {
-      if (controllerSigFallback.imageData) {
-        // Use base64 stored in MongoDB — works on any environment, no filesystem needed
-        certificateData.controllerSignatureImage = controllerSigFallback.imageData;
-      } else {
-        // Legacy fallback: read from disk
-        const sigPath = path.join(__dirname, '..', controllerSigFallback.filePath);
-        if (fs.existsSync(sigPath)) {
-          const ext = path.extname(sigPath).slice(1) || 'png';
-          const buffer = fs.readFileSync(sigPath);
-          certificateData.controllerSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+
+    // ── Controller Signature ────────────────────────────────────────────────────
+    if (result.snapshotControllerSignatureImage || result.snapshotControllerSignatureLabel) {
+      // Tier 1: use the frozen snapshot
+      certificateData.controllerSignatureLabel = result.snapshotControllerSignatureLabel || 'Controller of Examination';
+      certificateData.controllerSignatureImage = result.snapshotControllerSignatureImage || null;
+
+    } else if (result.issuedAt) {
+      // Tier 2: legacy record — find the signature that existed at issuance time
+      const legacyCtrlSig = await CertificateSignature.findOne({
+        role: 'Controller of Examination',
+        createdAt: { $lte: result.issuedAt }
+      }).sort({ createdAt: -1 });
+
+      const legacyCtrl = legacyCtrlSig || await CertificateSignature.findOne({ role: 'Controller of Examination' })
+        .sort({ createdAt: 1 }); // oldest as last resort
+
+      if (legacyCtrl) {
+        certificateData.controllerSignatureLabel = legacyCtrl.signatoryLabel || 'Controller of Examination';
+        if (legacyCtrl.imageData) {
+          certificateData.controllerSignatureImage = legacyCtrl.imageData;
         } else {
-          certificateData.controllerSignatureImage = controllerSigFallback.filePath;
+          const sigPath = path.join(__dirname, '..', legacyCtrl.filePath);
+          if (fs.existsSync(sigPath)) {
+            const ext = path.extname(sigPath).slice(1) || 'png';
+            const buffer = fs.readFileSync(sigPath);
+            certificateData.controllerSignatureImage = `data:image/${ext};base64,${buffer.toString('base64')}`;
+          } else {
+            certificateData.controllerSignatureImage = legacyCtrl.filePath;
+          }
         }
+        // Freeze as snapshot so this path never runs again for this record
+        result.snapshotControllerSignatureImage = certificateData.controllerSignatureImage;
+        result.snapshotControllerSignatureLabel = certificateData.controllerSignatureLabel;
+        needsLegacySave = true;
+      }
+
+    } else {
+      // Tier 3: safety net — new record not yet issued
+      const liveSig = await CertificateSignature.findOne({ role: 'Controller of Examination', isActive: true })
+        .sort({ createdAt: -1 });
+      if (liveSig) {
+        certificateData.controllerSignatureLabel = liveSig.signatoryLabel || 'Controller of Examination';
+        certificateData.controllerSignatureImage = liveSig.imageData || liveSig.filePath || null;
       }
     }
+
+    // Persist any legacy snapshots we just resolved (runs only once per legacy record)
+    if (needsLegacySave) {
+      await result.save();
+    }
+    // --- End Signature Resolution ---
 
     res.json(certificateData);
   } catch (error) {

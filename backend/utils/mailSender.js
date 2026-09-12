@@ -20,7 +20,7 @@ const mailSender = async (email, title, body) => {
         });
 
         let info = await transporter.sendMail({
-            from: `Asssr <${process.env.MAIL_USER}>`,
+            from: `Varāhamihira Multidisciplinary Institute <${process.env.MAIL_FROM}>`,
             to: email,
             subject: title,
             html: body
@@ -30,6 +30,11 @@ const mailSender = async (email, title, body) => {
         return info;
     } catch (err) {
         console.error("Error sending email:", err.message);
+        console.error("--- DEBUG INFO (If this does not say zeptomail, you MUST restart the server!) ---");
+        console.error("Host:", process.env.MAIL_HOST);
+        console.error("User:", process.env.MAIL_USER);
+        console.error("From:", process.env.MAIL_FROM);
+        console.error("-------------------------------------------------------------------------------");
         return { success: false, error: err.message };
     }
 };

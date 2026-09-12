@@ -55,6 +55,7 @@ const StudentDashboard = () => {
       formData.append('rollNo', selectedResult?.rollNo);
       formData.append('type', 'certificate');
       formData.append('resultId', selectedResult?._id || '');
+      formData.append('certificateNo', selectedResult?.certificateNo || '');
 
       const res = await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
         method: 'POST',
@@ -86,7 +87,31 @@ const StudentDashboard = () => {
     if (!student?.name && storedStudentInfo) {
       updateStudent(JSON.parse(storedStudentInfo));
     }
-    fetchResults(token);
+
+    // Check if student is returning from Zoho payment
+    const pendingResultId = localStorage.getItem('pendingPaymentResultId');
+    if (pendingResultId) {
+      localStorage.removeItem('pendingPaymentResultId');
+      // Confirm the payment with backend
+      fetch(`${API_URL}/api/student/confirm-payment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ resultId: pendingResultId })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            alert(`Payment confirmed! Txn ID: ${data.transactionId}`);
+          }
+          fetchResults(token);
+        })
+        .catch(() => fetchResults(token));
+    } else {
+      fetchResults(token);
+    }
   }, [navigate, student, updateStudent]);
 
   const fetchResults = async (token) => {
@@ -119,7 +144,7 @@ const StudentDashboard = () => {
         if (data.paymentUrl) {
           // Show the payment popup instead of redirecting immediately
           setPaymentUrl(data.paymentUrl);
-          setPaymentMessage(data.message || "Your free download window has expired. Please pay to download again.");
+          setPaymentMessage(data.message || "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.");
           setPendingPaymentResultId(resultId);
           setShowPaymentPopup(true);
         } else {
@@ -262,7 +287,44 @@ const StudentDashboard = () => {
               )}
             </div>
 
-            {results.some(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())) && (
+            {results.some(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())) && (() => {
+              // Must match backend FREE_PERIOD_MINUTES — change to (180 * 24 * 60) for production
+              const FREE_PERIOD_MINUTES = 5;
+
+              const getDownloadStatus = (result) => {
+                if (!result.firstDownloadedAt) return { status: 'free', label: 'Free downloads available' };
+                const now = new Date();
+
+                if (result.paymentStatus === 'paid' && result.lastPaidAt) {
+                  const paidElapsed = Math.floor(Math.abs(now - new Date(result.lastPaidAt)) / (1000 * 60));
+                  const remaining = FREE_PERIOD_MINUTES - paidElapsed;
+                  if (remaining > 0) {
+                    return { status: 'paid', remaining, transactionId: result.transactionId };
+                  }
+                  return { status: 'expired' };
+                }
+
+                const freeElapsed = Math.floor(Math.abs(now - new Date(result.firstDownloadedAt)) / (1000 * 60));
+                const remaining = FREE_PERIOD_MINUTES - freeElapsed;
+                if (remaining > 0) {
+                  return { status: 'free', remaining };
+                }
+                return { status: 'expired' };
+              };
+
+              const formatRemaining = (minutes) => {
+                if (minutes >= 1440) {
+                  const days = Math.floor(minutes / 1440);
+                  return `${days} day${days !== 1 ? 's' : ''} remaining`;
+                }
+                if (minutes >= 60) {
+                  const hours = Math.floor(minutes / 60);
+                  return `${hours} hour${hours !== 1 ? 's' : ''} remaining`;
+                }
+                return `${minutes} min remaining`;
+              };
+
+              return (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="px-6 py-4 bg-green-50 border-b border-green-100">
                   <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
@@ -274,6 +336,7 @@ const StudentDashboard = () => {
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {results.filter(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())).map((result) => {
+                    const dlStatus = getDownloadStatus(result);
                     return (
                       <div key={result._id} className="border border-gray-100 rounded-lg p-4 bg-gray-50 flex flex-col justify-between hover:border-green-300 transition-colors">
                         <div>
@@ -302,12 +365,49 @@ const StudentDashboard = () => {
                             </svg>
                             Download Certificate
                           </button>
+
+                        {/* Payment Status */}
+                        <div className="mt-3 pt-3 border-t border-gray-100">
+                          {dlStatus.status === 'paid' ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <svg className="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                </svg>
+                                <span className="text-xs font-medium text-green-700">Paid</span>
+                                {dlStatus.remaining && (
+                                  <span className="text-xs text-gray-400 ml-auto">{formatRemaining(dlStatus.remaining)}</span>
+                                )}
+                              </div>
+                              {dlStatus.transactionId && (
+                                <p className="text-[10px] text-gray-400 font-mono pl-5">Txn: {dlStatus.transactionId}</p>
+                              )}
+                            </div>
+                          ) : dlStatus.status === 'expired' ? (
+                            <div className="flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              <span className="text-xs font-medium text-amber-600">Unpaid — Payment required</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-xs text-blue-600">
+                                {dlStatus.remaining ? `Free download — ${formatRemaining(dlStatus.remaining)}` : 'Free downloads available'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
               <h3 className="text-lg font-bold text-gray-800 mb-4">Important Instructions</h3>
@@ -383,6 +483,8 @@ const StudentDashboard = () => {
                   } catch (e) {
                     console.error('Failed to initiate payment:', e);
                   }
+                  // Save result ID so we can confirm payment when student returns
+                  localStorage.setItem('pendingPaymentResultId', pendingPaymentResultId);
                   // Redirect to Zoho payment page
                   window.location.href = paymentUrl;
                 }}

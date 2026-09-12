@@ -15,7 +15,6 @@ const CertificateSignatureSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['Verifying Authority', 'Controller of Examination'],
     required: true
   },
   isActive: {

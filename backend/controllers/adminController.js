@@ -4,6 +4,7 @@ const FileUpload = require('../models/FileUpload');
 const { processCSV, processExcel } = require('../utils/fileParser');
 const mongoose = require('mongoose');
 const { uploadFileToDrive, deleteFileFromDrive } = require('../utils/googleDriveUploader');
+const mailSender = require('../utils/mailSender');
 
 // Admin uploads student data -> Creates "draft" results
 const uploadStudents = async (req, res) => {
@@ -96,7 +97,13 @@ const uploadStudents = async (req, res) => {
 const assignBatch = async (req, res) => {
   try {
     const { batchId, teacherId } = req.body;
-    await Result.updateMany({ batchId }, { uploadedBy: teacherId });
+    if (!batchId || !teacherId) {
+      return res.status(400).json({ message: 'batchId and teacherId are required' });
+    }
+    await Result.updateMany(
+      { batchId },
+      { uploadedBy: new mongoose.Types.ObjectId(teacherId) }
+    );
     res.json({ message: 'Batch assigned to teacher successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error assigning batch', error: error.message });
@@ -128,7 +135,7 @@ const getDraftBatches = async (req, res) => {
           as: 'uploader'
         }
       },
-      { $unwind: '$uploader' },
+      { $unwind: { path: '$uploader', preserveNullAndEmptyArrays: true } },
       { $sort: { createdAt: -1 } }
     ]);
     res.json(batches);
@@ -248,12 +255,18 @@ const approveBatch = async (req, res) => {
       return res.status(201).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
     }
 
+    // NOTE: Signature snapshot is NOT taken here anymore.
+    // It is taken at the moment of FIRST certificate download (when certificateNo is assigned).
+    // This ensures that if a signature is updated after approval but before any student
+    // downloads, the new signature is reflected on those new records.
+
     await Result.updateMany({ batchId }, { status: 'approved', approvedAt: new Date() });
     res.json({ message: 'Batch approved successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error approving batch', error: error.message });
   }
 };
+
 
 const disapproveBatch = async (req, res) => {
   try {
@@ -329,6 +342,36 @@ const addTeacher = async (req, res) => {
     if (teacherExists) return res.status(201).json({ message: 'Teacher already exists' });
 
     const teacher = await User.create({ name, email, password, role: 'teacher' });
+    
+    // Send email with login credentials
+    const emailTitle = 'VMI Teacher Dashboard - Account Login Credentials';
+    const emailBody = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
+          <img src="https://assets.zyrosite.com/ALpPGp62aqt3yaO1/vmi-logo-mnlJkkXz42tMJO2O.png" alt="VMI Logo" style="max-width: 150px; height: auto;" />
+        </div>
+        <h2 style="color: #2c3e50; font-size: 22px;">Welcome to VMI, ${name}</h2>
+        <p style="font-size: 16px; line-height: 1.5;">An administrator has successfully set up your faculty account for the Varāhamihira Multidisciplinary Institute Teacher Dashboard.</p>
+        <p style="font-size: 16px; line-height: 1.5;">Please find your secure login credentials below:</p>
+        
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+          <p style="margin: 5px 0; font-size: 15px;"><b>Email:</b> ${email}</p>
+          <p style="margin: 5px 0; font-size: 15px;"><b>Password:</b> ${password}</p>
+        </div>
+        
+        <p style="font-size: 15px; color: #555; line-height: 1.5;">For security purposes, we highly recommend keeping these credentials strictly confidential.</p>
+        <p style="font-size: 15px; line-height: 1.5; margin-top: 30px;">
+          Best regards,<br>
+          <strong>VMI Administration Team</strong>
+        </p>
+        
+        <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #888;">
+          <p>This is an auto-generated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    `;
+    await mailSender(email, emailTitle, emailBody);
+
     res.status(201).json({ _id: teacher._id, name: teacher.name, email: teacher.email, role: teacher.role });
   } catch (error) {
     res.status(500).json({ message: 'Error adding teacher', error: error.message });
@@ -363,6 +406,23 @@ const changeTeacherPassword = async (req, res) => {
 
     user.password = newPassword; // Hashing handled by pre-save hook
     await user.save();
+
+    // Send email about password change
+    const emailTitle = 'Your Teacher Dashboard Password Has Been Updated';
+    const emailBody = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <img src="https://assets.zyrosite.com/ALpPGp62aqt3yaO1/vmi-logo-mnlJkkXz42tMJO2O.png" alt="VMI Logo" style="max-width: 150px; height: auto;" />
+        </div>
+        <h2>Hello ${user.name},</h2>
+        <p>Your password for the VMI Teacher Dashboard has been successfully updated by the admin.</p>
+        <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <p style="margin: 5px 0;"><b>Email:</b> ${user.email}</p>
+          <p style="margin: 5px 0;"><b>New Password:</b> ${newPassword}</p>
+        </div>
+      </div>
+    `;
+    await mailSender(user.email, emailTitle, emailBody);
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
@@ -582,7 +642,7 @@ const uploadCertificateSignature = async (req, res) => {
       filePath: filePath,
       imageData: imageData,
       role: role,
-      signatoryLabel: role,
+      signatoryLabel: req.body.signatoryLabel || role,
       isActive: true,
       uploadedBy: req.user._id
     });

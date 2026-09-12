@@ -26,6 +26,7 @@ router.post('/webhook', async (req, res) => {
       if (result) {
         result.paymentStatus = 'paid';
         result.lastPaidAt = new Date();
+        result.transactionId = payment.payment_id || null;
         result.paymentInitiated = false; // Reset flag
         await result.save();
         console.log(`✅ Certificate unlocked for Result ID: ${result._id} | Roll No: ${result.rollNo}`);

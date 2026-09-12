@@ -144,7 +144,7 @@ const CertificateTemplate = ({ certificateData }) => {
 
             {/* Centre: logo */}
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-              <img src="/VMI Logo.png" alt="VMI Logo" style={{ width:'82px', height:'82px', objectFit:'contain', position: 'relative', top: '15px' }} />
+              <img src="/VMI Logo.png" alt="VMI Logo" style={{ width:'95px', height:'95px', objectFit:'contain', position: 'relative', top: '15px' }} />
             </div>
 
             {/* Right: roll no + photo stacked */}
@@ -164,7 +164,7 @@ const CertificateTemplate = ({ certificateData }) => {
             backgroundColor:'#f9f9f9',
           }}>
             {photoSrc
-              ? <img src={photoSrc} alt="Student" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              ? <img src={photoSrc} alt="Student" style={{ width:'100%', height:'100%', objectFit:'cover' }} referrerPolicy="no-referrer" />
               : <div style={{ ...tahoma, fontSize:'9px', color:'#999', textAlign:'center' }}>Photo</div>
             }
           </div>
@@ -344,8 +344,9 @@ const CertificateTemplate = ({ certificateData }) => {
                 <img src={controllerSigSrc} alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
               </div>
               <div style={hrStyle} />
-              <div style={{ ...kokila, fontSize:'12.5px', marginTop:'2px' }}>परीक्षा नियंत्रक</div>
-              <div style={{ ...tahoma, fontSize:'11px' }}>Controller of Examination</div>
+              <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
+                {certificateData?.controllerSignatureLabel || 'Controller of Examination'}
+              </div>
               <div style={{ ...oldEng, fontSize:'8px', marginTop:'1px' }}>Varāhamihira Multidisciplinary Institute</div>
             </div>
 
@@ -373,11 +374,12 @@ const CertificateTemplate = ({ certificateData }) => {
             {/* Right — Verifying Authority */}
             <div style={{ textAlign:'center', width:'190px' }}>
               <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={authSigSrc} alt="O.S.D. (Examination)" style={{ height:'48px', objectFit:'contain' }} />
+                <img src={authSigSrc} alt="Signature" style={{ height:'48px', objectFit:'contain' }} />
               </div>
               <div style={hrStyle} />
-              <div style={{ ...kokila, fontSize:'12.5px', marginTop:'2px' }}>सत्यापन प्राधिकारी</div>
-              <div style={{ ...tahoma, fontSize:'11px' }}>O.S.D. (Examination)</div>
+              <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
+                {certificateData?.authSignatureLabel || 'O.S.D. (Examination)'}
+              </div>
               <div style={{ ...tahoma, fontSize:'9px', marginTop:'1px', color:'#444' }}>
                 Asiatic Society for Social Science Research
               </div>

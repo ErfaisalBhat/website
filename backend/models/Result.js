@@ -207,12 +207,44 @@ const resultSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-  // Track if certificate PDF was already uploaded to Google Drive (to prevent duplicates)
-  certificateDriveFileId: {
+  transactionId: {
     type: String,
     default: null
   },
-  certificateDriveHash: {
+  // Track certificate PDF versions uploaded to Google Drive
+  // Each entry = { fileId, hash, uploadedAt } — old versions are preserved
+  certificateDriveVersions: {
+    type: [{
+      fileId: String,
+      hash: String,
+      fileName: String,
+      uploadedAt: { type: Date, default: Date.now }
+    }],
+    default: []
+  },
+  // Quick-lookup: hash of the latest uploaded version (to skip identical re-uploads)
+  certificateDriveLatestHash: {
+    type: String,
+    default: null
+  },
+
+  // --- Signature Snapshot (captured at batch approval time) ---
+  // Locking these in prevents future signature/label updates from affecting
+  // already-published results. New records that don't have these set will
+  // fall back to the live active signature.
+  snapshotAuthSignatureImage: {
+    type: String,   // base64 data URL
+    default: null
+  },
+  snapshotAuthSignatureLabel: {
+    type: String,
+    default: null
+  },
+  snapshotControllerSignatureImage: {
+    type: String,   // base64 data URL
+    default: null
+  },
+  snapshotControllerSignatureLabel: {
     type: String,
     default: null
   }

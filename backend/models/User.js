@@ -82,10 +82,14 @@ async function sendUserInformation(email, name, password) {
   }
 }
 
-userSchema.pre("save", async function (next) {
-  await sendUserInformation(this.email, this.name, this.password);
-  next();
-});
+// userSchema.pre("save", async function (next) {
+//   // Only send welcome email when a NEW user is created, and skip dummy student emails
+//   if (this.isNew && !this.email.endsWith('@student.com')) {
+//     // Fire-and-forget: don't block saving if email fails
+//     sendUserInformation(this.email, this.name, this.password).catch(() => {});
+//   }
+//   next();
+// });
 
 // Hash password before saving
 userSchema.pre('save', async function (next) {

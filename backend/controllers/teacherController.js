@@ -1,15 +1,19 @@
+const mongoose = require('mongoose');
 const Result = require('../models/Result');
 const { computeRemark } = require('../utils/remarkCalculator');
 
 // Get all batches assigned to teacher
 const getAssignedBatches = async (req, res) => {
   try {
+    const teacherId = new mongoose.Types.ObjectId(req.user._id);
+    console.log('[getAssignedBatches] teacher _id:', req.user._id, '→ ObjectId:', teacherId);
+
+    // Debug: check raw DB records
+    const rawCount = await Result.countDocuments({ uploadedBy: teacherId });
+    console.log('[getAssignedBatches] raw Result count for this teacher:', rawCount);
+
     const batches = await Result.aggregate([
-      { 
-        $match: { 
-          uploadedBy: req.user._id 
-        } 
-      },
+      { $match: { uploadedBy: teacherId } },
       {
         $group: {
           _id: '$batchId',
@@ -22,8 +26,10 @@ const getAssignedBatches = async (req, res) => {
       },
       { $sort: { createdAt: -1 } }
     ]);
+    console.log('[getAssignedBatches] batches found:', batches.length);
     res.json(batches);
   } catch (error) {
+    console.error('[getAssignedBatches] ERROR:', error.message);
     res.status(500).json({ message: 'Error fetching assigned batches', error: error.message });
   }
 };

@@ -142,4 +142,46 @@ async function deleteFileFromDrive(fileId) {
   }
 }
 
-module.exports = { uploadFileToDrive, deleteFileFromDrive };
+/**
+ * Create a NEW file on Google Drive (never overwrites existing files).
+ * Used for certificate versioning where every changed version must be preserved.
+ * @param {Object} options
+ * @param {Buffer}  options.buffer    - File data
+ * @param {string}  options.mimeType  - e.g. 'application/pdf'
+ * @param {string}  options.fileName  - Name to give the file on Drive
+ * @param {string}  [options.folderId] - Drive folder ID (falls back to env var)
+ * @returns {Promise<{fileId, webViewLink, directUrl}>}
+ */
+async function createFileOnDrive({ buffer, mimeType, fileName, folderId }) {
+  const drive = getDriveClient();
+
+  const targetFolderId = folderId || process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!targetFolderId) {
+    throw new Error(
+      'GOOGLE_DRIVE_FOLDER_ID is not set in .env and no folderId was passed.'
+    );
+  }
+
+  const readableStream = new Readable();
+  readableStream.push(buffer);
+  readableStream.push(null);
+
+  const response = await drive.files.create({
+    requestBody: { name: fileName, parents: [targetFolderId] },
+    media: { mimeType, body: readableStream },
+    fields: 'id, webViewLink, webContentLink',
+  });
+
+  const fileId = response.data.id;
+
+  // Make the file publicly readable
+  await drive.permissions.create({
+    fileId,
+    requestBody: { role: 'reader', type: 'anyone' },
+  });
+
+  const directUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+  return { fileId, webViewLink: response.data.webViewLink, directUrl };
+}
+
+module.exports = { uploadFileToDrive, deleteFileFromDrive, createFileOnDrive };

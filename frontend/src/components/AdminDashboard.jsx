@@ -75,6 +75,8 @@ const AdminDashboard = () => {
   const [activeCertSignatures, setActiveCertSignatures] = useState([]);
   const [certSignatureFile, setCertSignatureFile] = useState(null);
   const [certSignatureRole, setCertSignatureRole] = useState('Verifying Authority');
+  const [authLabelInput, setAuthLabelInput] = useState('Verifying Authority');
+  const [controllerLabelInput, setControllerLabelInput] = useState('Controller of Examination');
 
   const [activeSignature, setActiveSignature] = useState(null);
   const [signatureFile, setSignatureFile] = useState(null);
@@ -212,6 +214,10 @@ const AdminDashboard = () => {
     const formData = new FormData();
     formData.append('file', certSignatureFile);
     formData.append('role', certSignatureRole);
+    const labelToSend = certSignatureRole === 'Verifying Authority' ? authLabelInput : controllerLabelInput;
+    if (labelToSend.trim()) {
+      formData.append('signatoryLabel', labelToSend.trim());
+    }
 
     try {
       const res = await fetch(`${API_URL}/api/admin/signature`, {
@@ -902,7 +908,6 @@ const AdminDashboard = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {activeCertSignatures.map(sig => (
                             <div key={sig._id} className="space-y-4">
-                              <h4 className="font-bold text-gray-800">{sig.role}</h4>
                               <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-full shadow-inner">
                                 <img 
                                   src={sig.imageData || `${API_URL}/${sig.filePath}`} 
@@ -943,7 +948,14 @@ const AdminDashboard = () => {
                               onChange={(e) => setCertSignatureRole(e.target.value)} 
                               className="sr-only"
                             />
-                            <div className="font-bold text-sm text-gray-800">Verifying Authority</div>
+                            <input 
+                              type="text"
+                              value={authLabelInput}
+                              onChange={(e) => setAuthLabelInput(e.target.value)}
+                              onClick={(e) => setCertSignatureRole('Verifying Authority')}
+                              placeholder="Verifying Authority"
+                              className="font-bold text-sm text-gray-800 bg-transparent outline-none w-full border-b border-transparent focus:border-blue-400 transition-colors"
+                            />
                           </label>
                           <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:border-gray-300'}`}>
                             <input 
@@ -954,7 +966,14 @@ const AdminDashboard = () => {
                               onChange={(e) => setCertSignatureRole(e.target.value)} 
                               className="sr-only"
                             />
-                            <div className="font-bold text-sm text-gray-800">Controller of Examination</div>
+                            <input 
+                              type="text"
+                              value={controllerLabelInput}
+                              onChange={(e) => setControllerLabelInput(e.target.value)}
+                              onClick={(e) => setCertSignatureRole('Controller of Examination')}
+                              placeholder="Controller of Examination"
+                              className="font-bold text-sm text-gray-800 bg-transparent outline-none w-full border-b border-transparent focus:border-blue-400 transition-colors"
+                            />
                           </label>
                         </div>
                       </div>
@@ -1121,10 +1140,11 @@ const AdminDashboard = () => {
                                       src={
                                         r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
                                           ? r.student.profileImageId
-                                          : `${API_URL}/api/uploads/${r.student.profileImageId}`
+                                          : `${API_URL}/uploads/${r.student.profileImageId}`
                                       }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
+                                      referrerPolicy="no-referrer"
                                     />
                                   ) : (
                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">
@@ -1381,10 +1401,11 @@ const AdminDashboard = () => {
                                       src={
                                         r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
                                           ? r.student.profileImageId
-                                          : `${API_URL}/api/uploads/${r.student.profileImageId}`
+                                          : `${API_URL}/uploads/${r.student.profileImageId}`
                                       }
                                       className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 shadow-sm" 
                                       alt="" 
+                                      referrerPolicy="no-referrer"
                                     />
                                   ) : (
                                     <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200">
@@ -1460,10 +1481,11 @@ const AdminDashboard = () => {
                                   src={
                                     student.profileImageId.startsWith('http') || student.profileImageId.startsWith('data:')
                                       ? student.profileImageId
-                                      : `${API_URL}/api/uploads/${student.profileImageId}`
+                                      : `${API_URL}/uploads/${student.profileImageId}`
                                   }
                                   alt="" 
                                   className="w-12 h-12 rounded-lg object-cover border"
+                                  referrerPolicy="no-referrer"
                                 />
                               ) : (
                                 <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
