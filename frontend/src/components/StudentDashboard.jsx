@@ -92,23 +92,11 @@ const StudentDashboard = () => {
     const pendingResultId = localStorage.getItem('pendingPaymentResultId');
     if (pendingResultId) {
       localStorage.removeItem('pendingPaymentResultId');
-      // Confirm the payment with backend
-      fetch(`${API_URL}/api/student/confirm-payment`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ resultId: pendingResultId })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            alert(`Payment confirmed! Txn ID: ${data.transactionId}`);
-          }
-          fetchResults(token);
-        })
-        .catch(() => fetchResults(token));
+      // We rely on the Zoho Webhook to confirm the payment securely on the server.
+      // Fetch results immediately, but it might take a few seconds for the webhook to process.
+      fetchResults(token).then(() => {
+        alert("Welcome back! If your payment was successful, your certificate will unlock shortly once we receive confirmation from the payment gateway.");
+      });
     } else {
       fetchResults(token);
     }
