@@ -23,16 +23,16 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const NavItem = ({ icon: Icon, label, active, onClick, count }) => (
   <button
     onClick={onClick}
-    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+    className={`flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-semibold transition-all duration-200 whitespace-nowrap border-b-2 outline-none active:scale-[0.97] active:shadow-[0_0_12px_rgba(255,255,255,0.4)] rounded-t-sm ${
       active
-        ? 'bg-blue-600 text-white'
-        : 'text-gray-200 hover:bg-gray-700 hover:text-white'
+        ? 'border-white text-white bg-[#152861]'
+        : 'border-transparent text-blue-200 hover:bg-[#152861]/50 hover:text-white'
     }`}
   >
     <Icon className="w-4 h-4" />
-    <span>{label}</span>
+    <span className="tracking-wide uppercase text-[10px]">{label}</span>
     {count > 0 && (
-      <span className={`text-xs px-1.5 py-0.5 rounded-full ${active ? 'bg-white text-blue-600' : 'bg-blue-500 text-white'}`}>
+      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm ${active ? 'bg-white text-[#1e3a8a]' : 'bg-[#152861] text-white'}`}>
         {count}
       </span>
     )}
@@ -718,69 +718,72 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden">
+    <div className="flex flex-col h-screen bg-[#f4f6f9] font-sans overflow-hidden">
       {/* Top Navbar */}
-      <nav className="bg-gray-900 text-white flex items-center justify-between px-6 py-3 z-40 shadow-md flex-wrap gap-2">
-          <h1 className="text-lg font-bold text-white whitespace-nowrap">Admin Panel</h1>
-          
+      <nav className="bg-[#1e3a8a] text-white flex items-center justify-between px-6 pt-2 pb-0 z-40 shadow-lg border-b-[4px] border-white gap-4 flex-nowrap w-full overflow-x-auto hide-scrollbar">
+        <div className="flex items-center self-center pb-2 shrink-0">
+          <h1 className="text-sm font-bold tracking-wider text-white uppercase whitespace-nowrap">Admin Panel</h1>
+        </div>
+
+        <div className="flex flex-row items-end gap-4 self-stretch justify-end flex-nowrap w-full md:w-auto">
           {/* Segmented Flow Toggle */}
-          <div className="flex bg-gray-800 p-1 rounded-lg border border-gray-700">
+          <div className="flex bg-[#152861] p-1 rounded-md shadow-inner self-center mb-1 shrink-0">
             <button
               onClick={() => setActiveFlow('results')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                activeFlow === 'results' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider outline-none active:scale-[0.97] active:shadow-[0_0_10px_rgba(255,255,255,0.4)] ${
+                activeFlow === 'results' ? 'bg-white text-[#1e3a8a] shadow-sm' : 'text-blue-200 hover:text-white hover:bg-white/10'
               }`}
             >
-              Student Results
+              Degree
             </button>
             <button
               onClick={() => setActiveFlow('diplomas')}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                activeFlow === 'diplomas' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-3 py-1 rounded text-[10px] font-bold transition-all uppercase tracking-wider outline-none active:scale-[0.97] active:shadow-[0_0_10px_rgba(255,255,255,0.4)] ${
+                activeFlow === 'diplomas' ? 'bg-white text-[#1e3a8a] shadow-sm' : 'text-blue-200 hover:text-white hover:bg-white/10'
               }`}
             >
-              Diploma Certificates
+              Diplomas
             </button>
           </div>
 
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-end gap-1 flex-nowrap shrink-0">
             {activeFlow === 'results' ? (
               <>
                 <NavItem
                   icon={CloudArrowUpIcon}
-                  label="Upload Student Records"
+                  label="Upload Records"
                   active={activeTab === 'upload'}
                   onClick={() => setActiveTab('upload')}
                 />
                 <NavItem
                   icon={DocumentTextIcon}
-                  label="Marks Submission"
+                  label="Teacher Assign"
                   active={activeTab === 'drafts'}
                   onClick={() => setActiveTab('drafts')}
                   count={draftBatches.length}
                 />
                 <NavItem
                   icon={PhotoIcon}
-                  label="Student Photos"
+                  label="Photos"
                   active={activeTab === 'photos'}
                   onClick={() => setActiveTab('photos')}
                 />
                 <NavItem
                   icon={CheckBadgeIcon}
-                  label="Result Approval"
+                  label="Approvals"
                   active={activeTab === 'pending'}
                   onClick={() => setActiveTab('pending')}
                   count={pendingBatches.length}
                 />
                 <NavItem
                   icon={UsersIcon}
-                  label="Manage Teachers"
+                  label="Teachers"
                   active={activeTab === 'teachers'}
                   onClick={() => setActiveTab('teachers')}
                 />
                 <NavItem
                   icon={CheckBadgeIcon}
-                  label="Published Results"
+                  label="Published"
                   active={activeTab === 'approved'}
                   onClick={() => setActiveTab('approved')}
                   count={approvedBatches.length}
@@ -790,30 +793,31 @@ const AdminDashboard = () => {
               <>
                 <NavItem
                   icon={CloudArrowUpIcon}
-                  label="Upload Diploma CSV"
+                  label="Upload CSV"
                   active={activeDiplomaTab === 'upload_diploma'}
                   onClick={() => setActiveDiplomaTab('upload_diploma')}
                 />
                 <NavItem
                   icon={CheckBadgeIcon}
-                  label="Diploma Certificates"
+                  label="Certificates"
                   active={activeDiplomaTab === 'list_diploma'}
                   onClick={() => setActiveDiplomaTab('list_diploma')}
                   count={diplomasList.length}
                 />
                 <NavItem
                   icon={DocumentTextIcon}
-                  label="Authorized Signature"
+                  label="Signatures"
                   active={activeDiplomaTab === 'signature_settings'}
                   onClick={() => setActiveDiplomaTab('signature_settings')}
                 />
               </>
             )}
           </div>
+        </div>
 
         <button
           onClick={logout}
-          className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 rounded-md transition-colors whitespace-nowrap"
+          className="flex items-center gap-1.5 px-3 py-1.5 ml-2 text-sm font-bold text-red-200 hover:bg-red-500 hover:text-white rounded transition-all whitespace-nowrap border border-red-500/50 shadow-sm uppercase tracking-widest text-[9px] shrink-0 outline-none active:scale-[0.97] active:shadow-[0_0_12px_rgba(239,68,68,0.5)]"
         >
           <ArrowLeftOnRectangleIcon className="w-4 h-4" />
           <span>Logout</span>
@@ -821,26 +825,28 @@ const AdminDashboard = () => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header />
-        <div className="flex-1 overflow-auto p-8">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f4f6f9] relative">
+        <div className="bg-white border-b border-gray-200 shadow-sm px-6 py-1.5 flex items-center justify-center sm:justify-start z-10 sticky top-0">
+          <Header />
+        </div>
+        <div className="flex-1 overflow-auto p-4 md:p-6 relative z-0">
           <div className="max-w-7xl mx-auto">
             {activeFlow === 'results' ? (
               <>
                 {activeTab === 'upload' && (
-              <div className="bg-white p-8 rounded-2xl shadow-sm border">
-                <div className="flex border-b mb-6">
+              <div className="bg-slate-50 p-5 md:p-6 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex border-b border-slate-200 mb-5">
                   <button
-                    className={`py-2 px-4 font-bold border-b-2 transition-all ${
-                      activeResultUploadTab === 'upload_records' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    className={`py-2 px-4 font-semibold text-sm border-b-2 transition-all ${
+                      activeResultUploadTab === 'upload_records' ? 'border-slate-800 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
                     }`}
                     onClick={() => setActiveResultUploadTab('upload_records')}
                   >
                     Upload Records
                   </button>
                   <button
-                    className={`py-2 px-4 font-bold border-b-2 transition-all ${
-                      activeResultUploadTab === 'upload_signature' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    className={`py-2 px-4 font-semibold text-sm border-b-2 transition-all ${
+                      activeResultUploadTab === 'upload_signature' ? 'border-slate-800 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'
                     }`}
                     onClick={() => setActiveResultUploadTab('upload_signature')}
                   >
@@ -850,96 +856,97 @@ const AdminDashboard = () => {
 
                 {activeResultUploadTab === 'upload_records' && (
                   <div>
-                    <div className="flex justify-between items-start mb-6">
+                    <div className="flex justify-between items-start mb-5">
                       <div>
-                        <h2 className="text-2xl font-bold text-gray-800">Upload Student Records</h2>
-                        <p className="text-gray-500">Create a new student result batch by uploading a CSV or Excel file.</p>
+                        <h2 className="text-xl font-semibold tracking-tight text-slate-900">Upload Records</h2>
+                        <p className="text-xs text-slate-500 mt-1">Create a new student result batch by uploading a CSV or Excel file.</p>
                       </div>
                       <a 
                         href="/sample-result-template.xlsx" 
                         download 
-                        className="flex items-center gap-2 text-sm font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-xl hover:bg-blue-100 transition-all border border-blue-100"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all border border-slate-300 shadow-sm"
                       >
-                        <DocumentTextIcon className="w-5 h-5" />
+                        <DocumentTextIcon className="w-4 h-4" />
                         Result Template
                       </a>
                     </div>
-                    <form onSubmit={handleUpload} className="space-y-6">
+                    <form onSubmit={handleUpload} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Programme Name</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Programme Name</label>
                         <input 
                           type="text" 
                           value={subject} 
                           onChange={(e) => setSubject(e.target.value)} 
-                          className="w-full border-gray-200 border p-3 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all" 
+                          className="w-full border-slate-300 border bg-white p-2.5 text-sm rounded-lg focus:ring-1 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all shadow-sm text-slate-900" 
                           placeholder="e.g. Mathematics" 
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">CSV/Excel File</label>
-                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">CSV/Excel File</label>
+                        <div className="bg-white border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-500 transition-all cursor-pointer relative">
                           <input 
                             type="file" 
                             onChange={(e) => setFile(e.target.files[0])} 
                             className="absolute inset-0 opacity-0 cursor-pointer" 
                             accept=".csv,.xlsx,.xls" 
                           />
-                          <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                          <p className="text-sm text-gray-600">
-                            {file ? <span className="text-blue-600 font-bold">{file.name}</span> : "Click or drag to upload result sheet"}
+                          <CloudArrowUpIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-xs font-medium text-slate-600">
+                            {file ? <span className="text-slate-900 font-bold">{file.name}</span> : "Click or drag to upload result sheet"}
                           </p>
                         </div>
                       </div>
-                      <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
-                        Upload Student Records
+                      <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-800 active:scale-[0.99] transition-all shadow-sm">
+                        Upload Records
                       </button>
                     </form>
                   </div>
                 )}
 
                 {activeResultUploadTab === 'upload_signature' && (
-                  <div className="max-w-2xl">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Certificate Signature</h2>
-                    <p className="text-gray-500 mb-8">Manage the signature rendered on regular certificates (Verifying Authority & Controller of Exam).</p>
+                  <div className="w-full">
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-900 mb-1">Certificate Signature</h2>
+                    <p className="text-xs text-slate-500 mb-5">Manage the signature rendered on regular certificates (Verifying Authority & Controller of Exam).</p>
 
-                    <div className="mb-8 p-6 bg-gray-50 border rounded-2xl">
-                      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-4">Active Signatures</h3>
+                    {/* Active Signatures List */}
+                    <div className="mb-6 p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+                      <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Active Signatures</h3>
                       {activeCertSignatures.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {activeCertSignatures.map(sig => (
-                            <div key={sig._id} className="space-y-4">
-                              <div className="border bg-white p-4 rounded-xl flex items-center justify-center h-32 w-full shadow-inner">
+                            <div key={sig._id} className="flex flex-col gap-3 bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                              <div className="h-24 w-full flex items-center justify-center bg-white border border-slate-200 rounded p-2 shadow-sm">
                                 <img 
                                   src={sig.imageData || `${API_URL}/${sig.filePath}`} 
-                                  alt={sig.role} 
-                                  className="max-h-full max-w-full object-contain" 
+                                  alt="" 
+                                  className="max-h-full max-w-full object-contain mix-blend-multiply" 
                                 />
                               </div>
-                              <div>
-                                <p className="text-xs text-gray-400">Uploaded at: {new Date(sig.uploadedAt).toLocaleString()}</p>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[10px] text-slate-400 font-medium">Uploaded: {new Date(sig.uploadedAt).toLocaleDateString()}</p>
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleDeactivateCertSignature(sig._id)}
+                                  className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-700 transition-all active:scale-[0.98] shrink-0"
+                                >
+                                  Deactivate
+                                </button>
                               </div>
-                              <button 
-                                type="button" 
-                                onClick={() => handleDeactivateCertSignature(sig._id)}
-                                className="bg-red-50 text-red-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-red-100 transition-colors w-full"
-                              >
-                                Deactivate
-                              </button>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-6 text-gray-400 text-sm">
+                        <div className="text-center py-5 text-slate-400 text-xs font-medium bg-slate-50 rounded-lg border border-dashed border-slate-200">
                           No active signatures uploaded. Certs will display empty space.
                         </div>
                       )}
                     </div>
 
-                    <form onSubmit={handleCertSignatureUploadSubmit} className="space-y-6">
+                    <form onSubmit={handleCertSignatureUploadSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Select Signature Role</label>
-                        <div className="flex gap-4">
-                          <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${certSignatureRole === 'Verifying Authority' ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:border-gray-300'}`}>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Select Signature Role</label>
+                        <div className="flex gap-3">
+                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'Verifying Authority' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
                             <input 
                               type="radio" 
                               name="signatureRole" 
@@ -954,10 +961,10 @@ const AdminDashboard = () => {
                               onChange={(e) => setAuthLabelInput(e.target.value)}
                               onClick={(e) => setCertSignatureRole('Verifying Authority')}
                               placeholder="Verifying Authority"
-                              className="font-bold text-sm text-gray-800 bg-transparent outline-none w-full border-b border-transparent focus:border-blue-400 transition-colors"
+                              className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
                             />
                           </label>
-                          <label className={`flex-1 border p-4 rounded-xl cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-200' : 'hover:border-gray-300'}`}>
+                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
                             <input 
                               type="radio" 
                               name="signatureRole" 
@@ -972,15 +979,15 @@ const AdminDashboard = () => {
                               onChange={(e) => setControllerLabelInput(e.target.value)}
                               onClick={(e) => setCertSignatureRole('Controller of Examination')}
                               placeholder="Controller of Examination"
-                              className="font-bold text-sm text-gray-800 bg-transparent outline-none w-full border-b border-transparent focus:border-blue-400 transition-colors"
+                              className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
                             />
                           </label>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload PNG Signature</label>
-                        <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Upload PNG Signature</label>
+                        <div className="bg-white border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-500 transition-all cursor-pointer relative">
                           <input 
                             type="file" 
                             onChange={(e) => setCertSignatureFile(e.target.files[0])} 
@@ -992,19 +999,20 @@ const AdminDashboard = () => {
                               <img
                                 src={URL.createObjectURL(certSignatureFile)}
                                 alt="Signature preview"
-                                className="max-h-24 mx-auto mb-3 object-contain bg-gray-100 rounded-lg p-2"
+                                className="max-h-20 mx-auto mb-2 object-contain mix-blend-multiply"
                               />
-                              <p className="text-sm text-blue-600 font-bold">{certSignatureFile.name}</p>
+                              <p className="text-xs text-slate-900 font-bold">{certSignatureFile.name}</p>
                             </>
                           ) : (
                             <>
-                              <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                              <p className="text-sm text-gray-600">Click or drag to upload PNG signature</p>
+                              <CloudArrowUpIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                              <p className="text-xs font-medium text-slate-600">Click or drag to upload PNG signature</p>
                             </>
                           )}
                         </div>
                       </div>
-                      <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg shadow-blue-200">
+
+                      <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-800 active:scale-[0.99] transition-all shadow-sm">
                         Activate New Signature
                       </button>
                     </form>
@@ -1018,7 +1026,7 @@ const AdminDashboard = () => {
                 {!selectedPhotoBatch ? (
                   <>
                     <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-800">Marks Submission</h2>
+                      <h2 className="text-2xl font-bold text-gray-800">Teacher Assignment</h2>
                       <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-bold">
                         {draftBatches.length} Available
                       </span>
