@@ -13,6 +13,30 @@ const VerifyCertificate = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [isFocused, setIsFocused] = useState(true);
+
+  // Advanced Screenshot & Print Protection
+  useEffect(() => {
+    const handleFocus = () => setIsFocused(true);
+    const handleBlur = () => setIsFocused(false);
+    
+    const handleKeyDown = (e) => {
+      if (e.key === 'PrintScreen' || e.keyCode === 44) {
+        navigator.clipboard?.writeText('');
+        alert('Screenshots are disabled on this page for privacy reasons.');
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('keyup', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('keyup', handleKeyDown);
+    };
+  }, []);
 
   const verifyCertificate = async (certificateNumber) => {
     if (!certificateNumber.trim()) return;
@@ -146,7 +170,7 @@ const VerifyCertificate = () => {
                   <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 bg-white">
                     <div className="md:col-span-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-8 md:pb-0">
                       {result.profileImageId ? (
-                        <div className="relative">
+                        <div className="relative verify-photo-container" style={{ filter: isFocused ? 'none' : 'blur(15px)' }}>
                           <img 
                             src={
                               result.profileImageId.startsWith('http') || result.profileImageId.startsWith('data:')
@@ -160,6 +184,11 @@ const VerifyCertificate = () => {
                             draggable={false}
                             referrerPolicy="no-referrer"
                           />
+                          {!isFocused && (
+                            <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-500 bg-white/40 text-center px-2">
+                              Protected
+                            </div>
+                          )}
                           <div className="absolute -bottom-2 -right-2 bg-green-500 text-white p-1 rounded-full shadow-lg">
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -233,6 +262,12 @@ const VerifyCertificate = () => {
         }
         .animate-fadeIn {
           animation: fadeIn 0.4s ease-out forwards;
+        }
+        @media print {
+          .verify-photo-container {
+            visibility: hidden !important;
+            opacity: 0 !important;
+          }
         }
       `}</style>
     </div>

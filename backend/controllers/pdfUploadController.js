@@ -3,15 +3,28 @@ const Result = require('../models/Result');
 const crypto = require('crypto');
 
 /**
- * Strips volatile PDF metadata (CreationDate, ModDate, random ID) so that
- * the hash is stable across multiple downloads of the same visual content.
+ * Computes a stable content hash by stripping volatile PDF metadata
+ * (CreationDate, ModDate, random ID) so re-downloads of identical
+ * visual content produce the same hash.
+ *
+ * Optimised: metadata lives in the last ~2 KB of a PDF, so we only
+ * convert that tail to a string for regex stripping, while the bulk
+ * of the buffer is hashed directly.
  */
 function computeStableHash(buffer) {
-  const cleanBuffer = buffer.toString('binary')
+  // PDF metadata is near the end. Strip it from the tail only.
+  const TAIL_SIZE = Math.min(4096, buffer.length);
+  const headEnd = buffer.length - TAIL_SIZE;
+
+  const tail = buffer.slice(headEnd).toString('binary')
     .replace(/\/CreationDate \(D:.*?\)/g, '')
     .replace(/\/ModDate \(D:.*?\)/g, '')
     .replace(/\/ID \[\\<.*?\\>\s*\\<.*?\\>\\]/g, '');
-  return crypto.createHash('md5').update(cleanBuffer, 'binary').digest('hex');
+
+  const hash = crypto.createHash('md5');
+  if (headEnd > 0) hash.update(buffer.slice(0, headEnd));
+  hash.update(tail, 'binary');
+  return hash.digest('hex');
 }
 
 const uploadCertificatePdf = async (req, res) => {
@@ -28,26 +41,40 @@ const uploadCertificatePdf = async (req, res) => {
 
     // ── For student certificates: version-aware upload ───────────────────────
     if (resultId && type === 'certificate') {
+      // Fast path: only fetch hash for the skip-check (1 DB query)
       const existing = await Result.findById(resultId)
-        .select('certificateDriveVersions certificateDriveLatestHash certificateNo rollNo')
+        .select('certificateDriveLatestHash certificateNo rollNo')
         .lean();
 
-      // If the latest version has the same content hash → skip (no duplicate upload)
-      if (existing && existing.certificateDriveLatestHash === currentHash) {
-        const latestVersion = existing.certificateDriveVersions?.[existing.certificateDriveVersions.length - 1];
-        console.log(`[pdfUploadController] Certificate content unchanged (hash match). Skipping upload.`);
+      // If we have already uploaded this certificate once, skip uploading again.
+      // (html2canvas produces slightly different binaries every time, so hashing fails)
+      if (existing && existing.certificateDriveLatestHash) {
+        console.log(`[pdfUploadController] Certificate already saved to Drive. Skipping duplicate upload.`);
         return res.json({
-          message: 'Certificate unchanged (skipped duplicate upload)',
-          fileId: latestVersion?.fileId || null,
+          message: 'Certificate already saved (skipped duplicate upload)',
+          fileId: null,
           alreadySaved: true
         });
+      }
+
+      // Hash differs (or first upload) → we need the version count for the filename.
+      // Use aggregate to get count + last entry without pulling the whole array.
+      let versionCount = 0;
+      if (existing) {
+        const agg = await Result.aggregate([
+          { $match: { _id: existing._id } },
+          { $project: {
+            count: { $size: { $ifNull: ['$certificateDriveVersions', []] } }
+          }}
+        ]);
+        if (agg.length) { versionCount = agg[0].count; }
       }
 
       // ── Build a unique, descriptive filename ──────────────────────────────
       // Format: {RollNo}_{CertificateNo}_v{version}.pdf
       // e.g.   12345_2526001_v1.pdf, 12345_2526001_v2.pdf
       const certNo = certificateNo || existing?.certificateNo || resultId;
-      const versionNum = (existing?.certificateDriveVersions?.length || 0) + 1;
+      const versionNum = versionCount + 1;
       const fileName = `${rollNo || 'Student'}_${certNo}_v${versionNum}.pdf`;
 
       // ── Determine target Drive folder ─────────────────────────────────────

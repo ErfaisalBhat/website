@@ -183,7 +183,8 @@ const generateCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Result not found' });
     }
 
-    // --- ZOHO PAYMENT LOGIC ---
+    // --- ZOHO PAYMENT LOGIC (DISABLED — change `false` to `true` to re-enable) ---
+    if (false) {
     // Change FREE_PERIOD_MINUTES to (180 * 24 * 60) for production (180 days)
     const FREE_PERIOD_MINUTES = 5;
     const currentDate = new Date();
@@ -229,6 +230,7 @@ const generateCertificate = async (req, res) => {
       // else: still within free period — allow download
     }
     // --- END ZOHO PAYMENT LOGIC ---
+    }
 
     if (!result.certificateNo) {
       // Generate sequence number based on year
@@ -263,10 +265,12 @@ const generateCertificate = async (req, res) => {
       // Records that haven't been downloaded yet will always pick up the
       // latest active signature when they are first downloaded.
       const CertificateSignatureSnap = require('../models/CertificateSignature');
-      const authSnapSig = await CertificateSignatureSnap.findOne({ role: 'Verifying Authority', isActive: true })
-        .sort({ createdAt: -1 });
-      const controllerSnapSig = await CertificateSignatureSnap.findOne({ role: 'Controller of Examination', isActive: true })
-        .sort({ createdAt: -1 });
+      const [authSnapSig, controllerSnapSig] = await Promise.all([
+        CertificateSignatureSnap.findOne({ role: 'Verifying Authority', isActive: true })
+          .sort({ createdAt: -1 }),
+        CertificateSignatureSnap.findOne({ role: 'Controller of Examination', isActive: true })
+          .sort({ createdAt: -1 })
+      ]);
 
       if (authSnapSig) {
         result.snapshotAuthSignatureImage = authSnapSig.imageData || null;
@@ -281,14 +285,13 @@ const generateCertificate = async (req, res) => {
       await result.save();
     }
 
-    // Convert the Drive image URL → base64 so it renders in print/PDF correctly
+    // Start image download early (runs in parallel with signature resolution below)
     const rawImageUrl = result.student?.profileImageId || null;
-    // For Drive thumbnail, request a higher-res version for print quality
     const highResUrl = rawImageUrl && rawImageUrl.includes('drive.google.com/thumbnail')
-      ? rawImageUrl.replace(/sz=w\d+-h\d+/, 'sz=w800-h1000')
+      ? rawImageUrl.replace(/sz=w\d+-h\d+/, 'sz=w1000-h1200')
       : rawImageUrl;
-
-    const profileImageBase64 = await imageUrlToBase64(highResUrl);
+    // Don't await yet — let it run while we resolve signatures
+    const profileImagePromise = imageUrlToBase64(highResUrl);
 
     const certificateData = {
       _id: result._id,
@@ -320,8 +323,8 @@ const generateCertificate = async (req, res) => {
       dateOfResultEnglish: result.dateOfResultEnglish,
       certificateNo: result.certificateNo,
       issuedAt: result.issuedAt,
-      // Send base64 data URI — works in preview AND print/PDF (no CORS issues)
-      profileImageId: profileImageBase64 || rawImageUrl
+      // profileImageId will be set after signature resolution (image downloads in parallel)
+      profileImageId: null
     };
 
     // --- Signature Resolution (3-tier) ---
@@ -439,6 +442,10 @@ const generateCertificate = async (req, res) => {
       await result.save();
     }
     // --- End Signature Resolution ---
+
+    // Now await the profile image that's been downloading in parallel
+    const profileImageBase64 = await profileImagePromise;
+    certificateData.profileImageId = profileImageBase64 || rawImageUrl;
 
     res.json(certificateData);
   } catch (error) {

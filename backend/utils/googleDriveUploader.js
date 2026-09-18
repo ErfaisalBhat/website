@@ -16,7 +16,12 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
 const CREDENTIALS_PATH = path.join(__dirname, '../uploads/credentials.json');
 
+// Cache the Drive client so we don't re-read credentials on every request
+let _cachedDriveClient = null;
+
 function getDriveClient() {
+  if (_cachedDriveClient) return _cachedDriveClient;
+
   if (!fs.existsSync(CREDENTIALS_PATH)) {
     throw new Error(
       'OAuth2 credentials not found at uploads/credentials.json. ' +
@@ -38,7 +43,8 @@ function getDriveClient() {
   const oAuth2Client = new google.auth.OAuth2(client_id, client_secret);
   oAuth2Client.setCredentials({ refresh_token: refreshToken });
 
-  return google.drive({ version: 'v3', auth: oAuth2Client });
+  _cachedDriveClient = google.drive({ version: 'v3', auth: oAuth2Client });
+  return _cachedDriveClient;
 }
 
 /**

@@ -252,7 +252,10 @@ const approveBatch = async (req, res) => {
     const missingPhotos = results.filter(r => !r.student || !r.student.profileImageId);
     
     if (missingPhotos.length > 0) {
-      return res.status(201).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
+      const missingRollNos = missingPhotos.map(r => r.rollNo || 'unknown').join(', ');
+      return res.status(400).json({ 
+        message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos. Roll No(s): ${missingRollNos}` 
+      });
     }
 
     // NOTE: Signature snapshot is NOT taken here anymore.

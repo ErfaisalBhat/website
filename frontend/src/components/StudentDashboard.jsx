@@ -45,35 +45,44 @@ const StudentDashboard = () => {
     };
 
     try {
-      // 1. Generate PDF blob
+      // 1. Generate PDF blob ONLY ONCE
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
       
-      // 2. Upload to Drive via Backend (only saved once per result — backend deduplicates)
+      // 2. Download to user's device IMMEDIATELY
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = opt.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // 3. Upload to Drive via Backend in the background (fire and forget)
       const token = localStorage.getItem('studentToken');
       const formData = new FormData();
-      formData.append('file', pdfBlob, `${selectedResult?.rollNo || 'Certificate'}.pdf`);
+      formData.append('file', pdfBlob, opt.filename);
       formData.append('rollNo', selectedResult?.rollNo);
       formData.append('type', 'certificate');
       formData.append('resultId', selectedResult?._id || '');
       formData.append('certificateNo', selectedResult?.certificateNo || '');
 
-      const res = await fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
+      fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
+      }).then(async res => {
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error("Drive upload failed:", res.status, errorText);
+        }
+      }).catch(err => {
+        console.error("Drive upload network error:", err);
       });
 
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Drive upload failed:", res.status, errorText);
-        alert(`Note: Certificate downloaded locally, but failed to save to Google Drive (Error ${res.status}). Ensure the PDF size isn't blocked by your server.`);
-      }
-
-      // 3. Download to user's device
-      await html2pdf().set(opt).from(element).save();
     } catch (err) {
       console.error("PDF Gen Error:", err);
-      alert("Failed to generate/save PDF. Please try again.");
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       setIsSavingPDF(false);
       isSavingRef.current = false;

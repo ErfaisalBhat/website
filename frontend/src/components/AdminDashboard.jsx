@@ -859,7 +859,7 @@ const AdminDashboard = () => {
                     <div className="flex justify-between items-start mb-5">
                       <div>
                         <h2 className="text-xl font-semibold tracking-tight text-slate-900">Upload Records</h2>
-                        <p className="text-xs text-slate-500 mt-1">Create a new student result batch by uploading a CSV or Excel file.</p>
+                        
                       </div>
                       <a 
                         href="/sample-result-template.xlsx" 
