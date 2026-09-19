@@ -22,6 +22,10 @@ const diplomaCertificateSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  programmeName: {
+    type: String,
+    default: ''
+  },
   courseName: {
     type: String,
     required: true

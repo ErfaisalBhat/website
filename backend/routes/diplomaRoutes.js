@@ -6,6 +6,7 @@ const {
   uploadDiplomas,
   listDiplomas,
   verifyDiploma,
+  verifyDiplomaByRollAndDob,
   studentDownload,
   bulkDownload,
   downloadDiplomaPDF,
@@ -23,6 +24,7 @@ const upload = multer({ storage });
 
 // Public endpoints
 router.get('/verify/:certificateNo', verifyDiploma);
+router.post('/verify-by-credentials', verifyDiplomaByRollAndDob);
 router.post('/student-download', studentDownload);
 router.get('/student-download-pdf/:id', downloadDiplomaPDF);
 router.post('/save-certificate-to-drive', upload.single('file'), uploadCertificatePdf);

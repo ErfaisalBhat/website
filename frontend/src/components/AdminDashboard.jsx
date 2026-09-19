@@ -70,6 +70,8 @@ const AdminDashboard = () => {
   const [diplomaUploadResult, setDiplomaUploadResult] = useState(null);
   const [selectedDiploma, setSelectedDiploma] = useState(null);
   const [activeDiplomaTab, setActiveDiplomaTab] = useState('upload_diploma');
+  const [diplomaProgrammeName, setDiplomaProgrammeName] = useState('');
+  const [expandedProgrammes, setExpandedProgrammes] = useState({});
 
   const [activeResultUploadTab, setActiveResultUploadTab] = useState('upload_records');
   const [activeCertSignatures, setActiveCertSignatures] = useState([]);
@@ -160,8 +162,13 @@ const AdminDashboard = () => {
       toast.error('Please select a file');
       return;
     }
+    if (!diplomaProgrammeName.trim()) {
+      toast.error('Please enter a Programme Name');
+      return;
+    }
     const formData = new FormData();
     formData.append('file', diplomaFile);
+    formData.append('programmeName', diplomaProgrammeName.trim());
 
     const loadingToast = toast.loading('Uploading and processing diplomas...');
     try {
@@ -176,6 +183,7 @@ const AdminDashboard = () => {
         toast.success(data.message || 'Upload processed successfully');
         setDiplomaUploadResult(data);
         setDiplomaFile(null);
+        setDiplomaProgrammeName('');
         fetchDiplomas();
       } else {
         toast.error(data.message || 'Upload failed');
@@ -720,7 +728,7 @@ const AdminDashboard = () => {
   return (
     <div className="flex flex-col h-screen bg-[#f4f6f9] font-sans overflow-hidden">
       {/* Top Navbar */}
-      <nav className="bg-[#1e3a8a] text-white flex items-center justify-between px-6 pt-2 pb-0 z-40 shadow-lg border-b-[4px] border-white gap-4 flex-nowrap w-full overflow-x-auto hide-scrollbar">
+      <nav className="bg-[#1e3a8a] text-white flex items-center justify-between px-6 pt-2 pb-2 z-40 shadow-lg border-b-[4px] border-white gap-4 flex-nowrap w-full overflow-x-auto hide-scrollbar">
         <div className="flex items-center self-center pb-2 shrink-0">
           <h1 className="text-sm font-bold tracking-wider text-white uppercase whitespace-nowrap">Admin Panel</h1>
         </div>
@@ -1621,7 +1629,7 @@ const AdminDashboard = () => {
               </>
             ) : (
               <>
-                {activeDiplomaTab === 'upload_diploma' && (
+                 {activeDiplomaTab === 'upload_diploma' && (
                   <div className="bg-white p-8 rounded-2xl shadow-sm border">
                     <div className="flex justify-between items-start mb-6">
                       <div>
@@ -1630,8 +1638,25 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                     <form onSubmit={handleDiplomaUploadSubmit} className="space-y-6">
+                      {/* Programme Name Field */}
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">CSV File</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Programme Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={diplomaProgrammeName}
+                          onChange={(e) => setDiplomaProgrammeName(e.target.value)}
+                          placeholder="e.g. Bachelor of Computer Applications (BCA)"
+                          className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all"
+                          required
+                        />
+                        <p className="text-xs text-gray-400 mt-1">This name will be used to group students in the Certificates list.</p>
+                      </div>
+
+                      {/* CSV File Upload */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">CSV File <span className="text-red-500">*</span></label>
                         <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
                           <input 
                             type="file" 
@@ -1647,6 +1672,47 @@ const AdminDashboard = () => {
                       </div>
                       <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transform active:scale-[0.98] transition-all shadow-lg">
                         Upload Diploma Records
+                      </button>
+
+                      {/* Sample CSV Download */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const headers = [
+                            'S.No','DateOfBirth','ExamRollNo','CandidateName','FatherName',
+                            'P1_Code','P1_Name','P1_IA','P1_TH','P1_PRPW','P1_Result',
+                            'P2_Code','P2_Name','P2_IA','P2_TH','P2_PRPW','P2_Result',
+                            'P3_Code','P3_Name','P3_IA','P3_TH','P3_PRPW','P3_Result',
+                            'P4_Code','P4_Name','P4_IA','P4_TH','P4_PRPW','P4_Result',
+                            'P5_Code','P5_Name','P5_IA','P5_TH','P5_PRPW','P5_Result',
+                            'P6_Code','P6_Name','P6_IA','P6_TH','P6_PRPW','P6_Result',
+                            'TotalMaxMarks','TotalObtainedMarks','Division',
+                            'CourseName','Date','Session','Semester','Part','ExamFlag','AcademicYear'
+                          ];
+                          const sample = [
+                            '1','10/08/2001','BCA2301','RAHUL SHARMA','SUNIL SHARMA',
+                            'BCA101','Programming Fundamentals','18/20','55/80','','Pass',
+                            'BCA102','Mathematics','16/20','48/80','','Pass',
+                            'BCA103','English','17/20','50/80','','Pass',
+                            '','','','','','','',
+                            '','','','','','','',
+                            '','','','','','','',
+                            '300','204','First Division',
+                            'Bachelor of Computer Applications','15/06/2024','Annual','3rd','I','Regular','2023-24'
+                          ];
+                          const csv = [headers.join(','), sample.join(',')].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = 'diploma_sample_template.csv';
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                        className="w-full border-2 border-dashed border-gray-300 text-gray-500 py-3 rounded-xl font-semibold hover:border-blue-400 hover:text-blue-600 transition-all flex items-center justify-center gap-2 text-sm"
+                      >
+                        <DocumentTextIcon className="w-4 h-4" />
+                        Download Sample CSV Template
                       </button>
                     </form>
 
@@ -1676,7 +1742,7 @@ const AdminDashboard = () => {
                     <div className="flex justify-between items-center mb-6">
                       <div>
                         <h2 className="text-2xl font-bold text-gray-800">Diploma Certificates</h2>
-                        <p className="text-gray-500">Manage and preview generated student diplomas.</p>
+                        <p className="text-gray-500">Grouped by Programme. Click a programme to view its students.</p>
                       </div>
                       <button
                         onClick={async () => {
@@ -1708,56 +1774,92 @@ const AdminDashboard = () => {
                         Download Bulk ZIP
                       </button>
                     </div>
-                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
-                      <table className="w-full text-left">
-                        <thead className="bg-gray-50 border-b">
-                          <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Roll Number</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Student Name</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Course Name</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Semester</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase">Certificate No</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {diplomasList.map((cert) => (
-                            <tr key={cert._id} className="hover:bg-gray-50 transition-colors">
-                              <td className="p-4 font-mono font-bold text-sm text-gray-800">{cert.rollNo}</td>
-                              <td className="p-4 font-bold text-gray-800">{cert.candidateName}</td>
-                              <td className="p-4 text-gray-600 text-sm">{cert.courseName}</td>
-                              <td className="p-4 text-gray-600 text-sm">{cert.semester}</td>
-                              <td className="p-4 font-mono text-xs text-blue-600 font-bold">{cert.certificateNo}</td>
-                              <td className="p-4 text-right">
-                                <div className="flex justify-end gap-2">
-                                  <button
-                                    onClick={() => setSelectedDiploma(cert)}
-                                    className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-50 rounded-lg transition-all"
-                                    title="Preview Certificate"
-                                  >
-                                    <EyeIcon className="w-5 h-5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteDiploma(cert._id)}
-                                    className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
-                                    title="Delete Certificate"
-                                  >
-                                    <TrashIcon className="w-5 h-5" />
-                                  </button>
+
+                    {diplomasList.length === 0 ? (
+                      <div className="bg-white rounded-2xl shadow-sm border p-12 text-center text-gray-400">
+                        No Diploma Certificates generated yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* Group diplomas by programmeName */}
+                        {(() => {
+                          const groups = {};
+                          diplomasList.forEach((cert) => {
+                            const key = cert.programmeName || 'Uncategorised';
+                            if (!groups[key]) groups[key] = [];
+                            groups[key].push(cert);
+                          });
+                          return Object.entries(groups).map(([programme, certs]) => (
+                            <div key={programme} className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+                              {/* Programme Header / Dropdown Toggle */}
+                              <button
+                                onClick={() =>
+                                  setExpandedProgrammes((prev) => ({
+                                    ...prev,
+                                    [programme]: !prev[programme]
+                                  }))
+                                }
+                                className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors text-left"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <CheckBadgeIcon className="w-5 h-5 text-blue-500 shrink-0" />
+                                  <div>
+                                    <p className="font-bold text-gray-800 text-base">{programme}</p>
+                                    <p className="text-xs text-gray-400 mt-0.5">{certs.length} student{certs.length !== 1 ? 's' : ''}</p>
+                                  </div>
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {diplomasList.length === 0 && (
-                            <tr>
-                              <td colSpan="6" className="p-12 text-center text-gray-400">No Diploma Certificates generated yet.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                                <span className={`text-gray-400 transition-transform duration-200 ${expandedProgrammes[programme] ? 'rotate-180' : ''}`}>
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                  </svg>
+                                </span>
+                              </button>
+
+                              {/* Students Table — shown only when expanded */}
+                              {expandedProgrammes[programme] && (
+                                <div className="border-t">
+                                  <table className="w-full text-left">
+                                    <thead className="bg-gray-50 border-b">
+                                      <tr>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase">Roll No</th>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase">Student Name</th>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase">Course</th>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase">Semester</th>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase">Cert No</th>
+                                        <th className="p-3 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y">
+                                      {certs.map((cert) => (
+                                        <tr key={cert._id} className="hover:bg-blue-50 transition-colors">
+                                          <td className="p-3 font-mono font-bold text-sm text-gray-800">{cert.rollNo}</td>
+                                          <td className="p-3 font-semibold text-gray-800 text-sm">{cert.candidateName}</td>
+                                          <td className="p-3 text-gray-500 text-xs">{cert.courseName}</td>
+                                          <td className="p-3 text-gray-500 text-xs">{cert.semester}</td>
+                                          <td className="p-3 font-mono text-xs text-blue-600 font-bold">{cert.certificateNo}</td>
+                                          <td className="p-3 text-right">
+                                            <button
+                                              onClick={() => setSelectedDiploma(cert)}
+                                              className="text-blue-500 hover:text-blue-700 p-1.5 hover:bg-blue-100 rounded-lg transition-all"
+                                              title="Preview Certificate"
+                                            >
+                                              <EyeIcon className="w-4 h-4" />
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
+
 
                 {activeDiplomaTab === 'signature_settings' && (
                   <div className="bg-white p-8 rounded-2xl shadow-sm border max-w-2xl">

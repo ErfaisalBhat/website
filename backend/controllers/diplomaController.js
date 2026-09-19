@@ -83,6 +83,8 @@ const uploadDiplomas = async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
+    const programmeName = (req.body && req.body.programmeName) ? req.body.programmeName.trim() : '';
+
     const { valid, errors } = await parseCertificateCSV(req.file.buffer);
 
     if (errors.length > 0 && valid.length === 0) {
@@ -98,6 +100,7 @@ const uploadDiplomas = async (req, res) => {
 
     // Find the current highest sequence number for each academicYear across all records
     // Cache it per year so the whole batch stays consistent without extra DB hits per row
+
     const seqCache = {};
 
     const getNextSeq = async (academicYear) => {
@@ -179,6 +182,7 @@ const uploadDiplomas = async (req, res) => {
           candidateName,
           fatherName,
           dateOfBirth,
+          programmeName,
           courseName,
           semester,
           academicYear,
@@ -286,6 +290,56 @@ const studentDownload = async (req, res) => {
     res.status(500).json({ message: 'Lookup failed', error: error.message });
   }
 };
+
+// Public: Verify diploma by Roll No + DOB (same window as degree verification)
+const verifyDiplomaByRollAndDob = async (req, res) => {
+  try {
+    const { rollNo, dateOfBirth } = req.body;
+    if (!rollNo || !dateOfBirth) {
+      return res.status(400).json({ message: 'Roll Number and Date of Birth are required' });
+    }
+
+    const certs = await DiplomaCertificate.find({ rollNo });
+    if (!certs.length) {
+      return res.status(404).json({ message: 'No diploma certificate found for this Roll Number' });
+    }
+
+    const standardizeDate = (d) => {
+      if (!d) return '';
+      return d.toString().trim().replace(/[-/]/g, '');
+    };
+
+    const inputDob = standardizeDate(dateOfBirth);
+    const cert = certs.find(c => standardizeDate(c.dateOfBirth) === inputDob);
+
+    if (!cert) {
+      return res.status(401).json({ message: 'Date of Birth does not match our records' });
+    }
+
+    // Verify hash integrity
+    const currentHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(cert.marksData))
+      .digest('hex');
+
+    res.status(200).json({
+      certificateType: 'diploma',
+      certificateNo: cert.certificateNo,
+      candidateName: cert.candidateName,
+      rollNo: cert.rollNo,
+      programmeName: cert.programmeName || '',
+      courseName: cert.courseName,
+      semester: cert.semester,
+      academicYear: cert.academicYear,
+      division: cert.division,
+      issuedAt: cert.issuedAt,
+      isValid: currentHash === cert.marksHash ? 'Valid ✓' : 'Tampered ✗',
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Verification failed', error: error.message });
+  }
+};
+
 
 // Bulk ZIP generator endpoint (generates actual PDFs using Puppeteer)
 const bulkDownload = async (req, res) => {
@@ -604,6 +658,7 @@ module.exports = {
   uploadDiplomas,
   listDiplomas,
   verifyDiploma,
+  verifyDiplomaByRollAndDob,
   studentDownload,
   bulkDownload,
   downloadDiplomaPDF,
