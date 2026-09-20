@@ -346,7 +346,7 @@ const generateCertificate = async (req, res) => {
     // ── Auth Signature ──────────────────────────────────────────────────────────
     if (result.snapshotAuthSignatureImage || result.snapshotAuthSignatureLabel) {
       // Tier 1: use the frozen snapshot
-      certificateData.authSignatureLabel = result.snapshotAuthSignatureLabel || 'O.S.D. (Examination)';
+      certificateData.authSignatureLabel = result.snapshotAuthSignatureLabel || 'Verifying Authority';
       certificateData.authSignatureImage = result.snapshotAuthSignatureImage || null;
 
     } else if (result.issuedAt) {
@@ -360,7 +360,7 @@ const generateCertificate = async (req, res) => {
         .sort({ createdAt: 1 }); // oldest as last resort
 
       if (legacyAuth) {
-        certificateData.authSignatureLabel = legacyAuth.signatoryLabel || 'O.S.D. (Examination)';
+        certificateData.authSignatureLabel = legacyAuth.signatoryLabel || 'Verifying Authority';
         if (legacyAuth.imageData) {
           certificateData.authSignatureImage = legacyAuth.imageData;
         } else {
@@ -384,7 +384,7 @@ const generateCertificate = async (req, res) => {
       const liveSig = await CertificateSignature.findOne({ role: 'Verifying Authority', isActive: true })
         .sort({ createdAt: -1 });
       if (liveSig) {
-        certificateData.authSignatureLabel = liveSig.signatoryLabel || 'O.S.D. (Examination)';
+        certificateData.authSignatureLabel = liveSig.signatoryLabel || 'Verifying Authority';
         certificateData.authSignatureImage = liveSig.imageData || liveSig.filePath || null;
       }
     }
