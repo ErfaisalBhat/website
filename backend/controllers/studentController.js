@@ -183,8 +183,7 @@ const generateCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Result not found' });
     }
 
-    // --- ZOHO PAYMENT LOGIC (DISABLED — change `false` to `true` to re-enable) ---
-    if (false) {
+    // --- ZOHO PAYMENT LOGIC (ENABLED) ---
     // Change FREE_PERIOD_MINUTES to (180 * 24 * 60) for production (180 days)
     const FREE_PERIOD_MINUTES = 5;
     const currentDate = new Date();
@@ -230,7 +229,6 @@ const generateCertificate = async (req, res) => {
       // else: still within free period — allow download
     }
     // --- END ZOHO PAYMENT LOGIC ---
-    }
 
     if (!result.certificateNo) {
       // Generate sequence number based on year
@@ -268,17 +266,17 @@ const generateCertificate = async (req, res) => {
       const [authSnapSig, controllerSnapSig] = await Promise.all([
         CertificateSignatureSnap.findOne({ role: 'Verifying Authority', isActive: true })
           .sort({ createdAt: -1 }),
-        CertificateSignatureSnap.findOne({ role: 'Controller of Examination', isActive: true })
+        CertificateSignatureSnap.findOne({ role: 'O.S.D. (Examination)', isActive: true })
           .sort({ createdAt: -1 })
       ]);
 
       if (authSnapSig) {
         result.snapshotAuthSignatureImage = authSnapSig.imageData || null;
-        result.snapshotAuthSignatureLabel = authSnapSig.signatoryLabel || 'O.S.D. (Examination)';
+        result.snapshotAuthSignatureLabel = authSnapSig.signatoryLabel || 'Verifying Authority';
       }
       if (controllerSnapSig) {
         result.snapshotControllerSignatureImage = controllerSnapSig.imageData || null;
-        result.snapshotControllerSignatureLabel = controllerSnapSig.signatoryLabel || 'Controller of Examination';
+        result.snapshotControllerSignatureLabel = controllerSnapSig.signatoryLabel || 'O.S.D. (Examination)';
       }
       // --- End snapshot ---
 
@@ -394,21 +392,21 @@ const generateCertificate = async (req, res) => {
     // ── Controller Signature ────────────────────────────────────────────────────
     if (result.snapshotControllerSignatureImage || result.snapshotControllerSignatureLabel) {
       // Tier 1: use the frozen snapshot
-      certificateData.controllerSignatureLabel = result.snapshotControllerSignatureLabel || 'Controller of Examination';
+      certificateData.controllerSignatureLabel = result.snapshotControllerSignatureLabel || 'O.S.D. (Examination)';
       certificateData.controllerSignatureImage = result.snapshotControllerSignatureImage || null;
 
     } else if (result.issuedAt) {
       // Tier 2: legacy record — find the signature that existed at issuance time
       const legacyCtrlSig = await CertificateSignature.findOne({
-        role: 'Controller of Examination',
+        role: 'O.S.D. (Examination)',
         createdAt: { $lte: result.issuedAt }
       }).sort({ createdAt: -1 });
 
-      const legacyCtrl = legacyCtrlSig || await CertificateSignature.findOne({ role: 'Controller of Examination' })
+      const legacyCtrl = legacyCtrlSig || await CertificateSignature.findOne({ role: 'O.S.D. (Examination)' })
         .sort({ createdAt: 1 }); // oldest as last resort
 
       if (legacyCtrl) {
-        certificateData.controllerSignatureLabel = legacyCtrl.signatoryLabel || 'Controller of Examination';
+        certificateData.controllerSignatureLabel = legacyCtrl.signatoryLabel || 'O.S.D. (Examination)';
         if (legacyCtrl.imageData) {
           certificateData.controllerSignatureImage = legacyCtrl.imageData;
         } else {
@@ -429,10 +427,10 @@ const generateCertificate = async (req, res) => {
 
     } else {
       // Tier 3: safety net — new record not yet issued
-      const liveSig = await CertificateSignature.findOne({ role: 'Controller of Examination', isActive: true })
+      const liveSig = await CertificateSignature.findOne({ role: 'O.S.D. (Examination)', isActive: true })
         .sort({ createdAt: -1 });
       if (liveSig) {
-        certificateData.controllerSignatureLabel = liveSig.signatoryLabel || 'Controller of Examination';
+        certificateData.controllerSignatureLabel = liveSig.signatoryLabel || 'O.S.D. (Examination)';
         certificateData.controllerSignatureImage = liveSig.imageData || liveSig.filePath || null;
       }
     }

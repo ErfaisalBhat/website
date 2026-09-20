@@ -129,14 +129,20 @@ const TeacherDashboard = () => {
   const ME_MAX = 70;
 
   const handleMarkChange = (id, field, value) => {
-    const raw = value.toString().trim();
-    const isAB = raw.toUpperCase() === 'AB';
+    let raw = value.toString().toUpperCase().trim();
+
+    // Allow only empty string, numbers (including with decimals), 'A', 'AB', 'E', 'ER'
+    if (raw !== '' && !/^\d*\.?\d*$/.test(raw) && !['A', 'AB', 'E', 'ER'].includes(raw)) {
+      return; // reject any other alphabets or special characters
+    }
+
+    const isSpecialMark = raw === 'AB' || raw === 'ER';
 
     // Determine the max for this field
     const maxAllowed = field === 'iaMarks' ? IA_MAX : ME_MAX;
 
-    // If not AB, validate numeric range
-    if (!isAB && raw !== '') {
+    // If not special mark, validate numeric range
+    if (!isSpecialMark && raw !== '' && !['A', 'E'].includes(raw)) {
       const num = parseFloat(raw);
       if (!isNaN(num) && num > maxAllowed) {
         toast.error(`${field === 'iaMarks' ? 'IA' : 'ME'} Marks cannot exceed ${maxAllowed}`, {
@@ -148,12 +154,11 @@ const TeacherDashboard = () => {
 
     setResults(prev => prev.map(r => {
       if (r._id === id) {
-        // Allow 'AB' string for absent, otherwise store numeric or raw string while typing
-        const markValue = isAB ? 'AB' : (raw === '' ? '' : (isNaN(parseFloat(raw)) ? raw : parseFloat(raw)));
+        const markValue = isSpecialMark ? raw : (raw === '' || ['A', 'E'].includes(raw) ? raw : (isNaN(parseFloat(raw)) ? raw : parseFloat(raw)));
         const updated = { ...r, [field]: markValue };
-        // Total: treat AB / empty as 0 for display purposes
-        const ia = updated.iaMarks === 'AB' ? 0 : (parseFloat(updated.iaMarks) || 0);
-        const me = updated.meMarks === 'AB' ? 0 : (parseFloat(updated.meMarks) || 0);
+        // Total: treat AB/ER / empty as 0 for display purposes
+        const ia = (updated.iaMarks === 'AB' || updated.iaMarks === 'ER') ? 0 : (parseFloat(updated.iaMarks) || 0);
+        const me = (updated.meMarks === 'AB' || updated.meMarks === 'ER') ? 0 : (parseFloat(updated.meMarks) || 0);
         updated.marksTotal = ia + me;
         const preview = computeRemarkPreview(updated.iaMarks, updated.iaMaxMarks, updated.meMarks, updated.meMaxMarks);
         updated.resultRemarkEnglish = preview.resultRemarkEnglish;
@@ -425,10 +430,10 @@ const TeacherDashboard = () => {
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Eng)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-600 uppercase tracking-wider whitespace-nowrap">Father (Hin)</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider whitespace-nowrap text-center w-24">
-                          IA Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 30 / AB</span>
+                          IA Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 30 / AB / ER</span>
                         </th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-green-700 uppercase tracking-wider text-center w-24">
-                          ME Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 70 / AB</span>
+                          ME Marks<br /><span className="text-[9px] font-normal text-neutral-400 normal-case">max 70 / AB / ER</span>
                         </th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-center">Total</th>
                         <th className="p-3 border-b-2 border-r border-neutral-300 font-bold text-neutral-800 uppercase tracking-wider text-left min-w-[140px]">Remark (Eng)</th>
@@ -461,8 +466,8 @@ const TeacherDashboard = () => {
                               value={r.iaMarks}
                               onChange={(e) => handleMarkChange(r._id, 'iaMarks', e.target.value)}
                               disabled={isLocked}
-                              placeholder="0–30 / AB"
-                              title="Enter marks (0–30) or AB for absent"
+                              placeholder="0–30 / AB / ER"
+                              title="Enter marks (0–30), AB for absent, or ER"
                               className={`w-full text-center border p-2 outline-none transition-all font-mono text-sm font-bold ${
                                 isLocked
                                   ? 'bg-neutral-100 text-neutral-500 border-neutral-300'
@@ -478,8 +483,8 @@ const TeacherDashboard = () => {
                               value={r.meMarks}
                               onChange={(e) => handleMarkChange(r._id, 'meMarks', e.target.value)}
                               disabled={isLocked}
-                              placeholder="0–70 / AB"
-                              title="Enter marks (0–70) or AB for absent"
+                              placeholder="0–70 / AB / ER"
+                              title="Enter marks (0–70), AB for absent, or ER"
                               className={`w-full text-center border p-2 outline-none transition-all font-mono text-sm font-bold ${
                                 isLocked
                                   ? 'bg-neutral-100 text-neutral-500 border-neutral-300'

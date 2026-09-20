@@ -333,14 +333,14 @@ const CertificateTemplate = ({ certificateData }) => {
           {/* ══ FOOTER ══ */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginTop:'44px', marginBottom:'2px' }}>
 
-            {/* Left — Controller of Examination */}
+            {/* Left — O.S.D. (Examination) */}
             <div style={{ textAlign:'center', width:'190px' }}>
               <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
                 <img src={controllerSigSrc} alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
               </div>
               <div style={hrStyle} />
               <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
-                {certificateData?.controllerSignatureLabel || 'Controller of Examination'}
+                {certificateData?.controllerSignatureLabel || 'O.S.D. (Examination)'}
               </div>
               <div style={{ ...oldEng, fontSize:'11px', marginTop:'1px' }}>Varāhamihira Multidisciplinary Institute</div>
             </div>
