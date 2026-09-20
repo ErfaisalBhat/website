@@ -13,6 +13,7 @@ const {
   deleteDiploma,
   uploadSignature,
   getActiveSignature,
+  getSignatureForCert,
   deactivateSignature,
   saveToDrive
 } = require('../controllers/diplomaController');
@@ -29,6 +30,7 @@ router.post('/student-download', studentDownload);
 router.get('/student-download-pdf/:id', downloadDiplomaPDF);
 router.post('/save-certificate-to-drive', upload.single('file'), uploadCertificatePdf);
 router.get('/active-signature', getActiveSignature);
+router.get('/cert-signature/:id', getSignatureForCert);   // ← signature for a specific cert
 
 // Admin-only endpoints
 router.post('/upload', protect, admin, upload.single('file'), uploadDiplomas);

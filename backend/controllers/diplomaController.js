@@ -9,6 +9,31 @@ const fs = require('fs');
 const { parseCertificateCSV } = require('../utils/csvTemplate');
 const { uploadFileToDrive } = require('../utils/googleDriveUploader');
 
+// ── Signature resolver ────────────────────────────────────────────────────────
+// Resolves the correct Signature record for a given DiplomaCertificate.
+// Priority:
+//   1. The Signature that was stored on the cert at issuance (cert.signatureId)
+//   2. The currently active Signature (fallback for certs issued before this feature)
+const resolveSignatureForCert = async (cert) => {
+  let sig = null;
+
+  if (cert.signatureId) {
+    sig = await Signature.findById(cert.signatureId);
+  }
+
+  // Fallback: cert was issued before Option A was implemented, or signatureId is stale
+  if (!sig) {
+    sig = await Signature.findOne({ isActive: true });
+  }
+
+  if (!sig) return { signaturePath: '', signatoryLabel: '' };
+
+  return {
+    signaturePath: path.join(__dirname, '..', sig.filePath),
+    signatoryLabel: sig.signatoryLabel || ''
+  };
+};
+
 // Helper to parse "Obt/Max" strings
 const parseMarks = (val) => {
   if (!val || val.toString().trim() === '' || val.toString().trim() === '-') {
@@ -103,6 +128,12 @@ const uploadDiplomas = async (req, res) => {
 
     const seqCache = {};
 
+    // Snapshot the currently active signature once for the whole batch.
+    // Every certificate issued in this upload will reference this signature,
+    // so old certificates will always regenerate with the original signatory.
+    const activeSigAtIssuance = await Signature.findOne({ isActive: true });
+    const issuedSignatureId = activeSigAtIssuance ? activeSigAtIssuance._id : null;
+
     const getNextSeq = async (academicYear) => {
       if (seqCache[academicYear] === undefined) {
         // Find the highest existing sequence number for this year prefix
@@ -188,7 +219,8 @@ const uploadDiplomas = async (req, res) => {
           academicYear,
           division,
           marksHash,
-          marksData
+          marksData,
+          signatureId: issuedSignatureId   // ← snapshot at issuance
         });
 
         processed.push(newCert);
@@ -352,32 +384,29 @@ const bulkDownload = async (req, res) => {
     const bgImagePath = path.join(__dirname, '../../frontend/public/Blue.png');
     const outDir = path.join(__dirname, `../uploads/bulk_${Date.now()}`);
 
-    const activeSig = await Signature.findOne({ isActive: true });
-    let signaturePath = '';
-    let signatoryLabel = '';
-    if (activeSig) {
-      signaturePath = path.join(__dirname, '..', activeSig.filePath);
-      signatoryLabel = activeSig.signatoryLabel;
-    }
-
-    const studentsData = certs.map(cert => ({
-      rollNo: cert.rollNo,
-      candidateName: cert.candidateName,
-      fatherName: cert.fatherName,
-      courseName: cert.courseName,
-      semester: cert.semester,
-      part: cert.marksData?.part || 'I',
-      examSession: cert.marksData?.session || '',
-      examFlag: cert.marksData?.examFlag || '',
-      academicYear: cert.academicYear,
-      dateOfResult: cert.marksData?.dateOfResult || '',
-      certificateNumber: cert.certificateNo,
-      papers: cert.marksData?.papers || [],
-      totalMax: cert.marksData?.overallMax || 0,
-      totalObtained: cert.marksData?.overallObt || 0,
-      division: cert.division,
-      signatureImage: signaturePath,
-      signatoryLabel: signatoryLabel
+    // Resolve the correct signature per certificate (each may have been issued
+    // under a different signatory). Run in parallel for speed.
+    const studentsData = await Promise.all(certs.map(async (cert) => {
+      const { signaturePath, signatoryLabel } = await resolveSignatureForCert(cert);
+      return {
+        rollNo: cert.rollNo,
+        candidateName: cert.candidateName,
+        fatherName: cert.fatherName,
+        courseName: cert.courseName,
+        semester: cert.semester,
+        part: cert.marksData?.part || 'I',
+        examSession: cert.marksData?.session || '',
+        examFlag: cert.marksData?.examFlag || '',
+        academicYear: cert.academicYear,
+        dateOfResult: cert.marksData?.dateOfResult || '',
+        certificateNumber: cert.certificateNo,
+        papers: cert.marksData?.papers || [],
+        totalMax: cert.marksData?.overallMax || 0,
+        totalObtained: cert.marksData?.overallObt || 0,
+        division: cert.division,
+        signatureImage: signaturePath,
+        signatoryLabel: signatoryLabel
+      };
     }));
 
     const pdfPaths = await generateBulkCertificates(studentsData, bgImagePath, outDir);
@@ -445,13 +474,8 @@ const downloadDiplomaPDF = async (req, res) => {
     const bgImagePath = path.join(__dirname, '../../frontend/public/Blue.png');
     const outputPath = path.join(__dirname, `../uploads/${cert.rollNo}_Diploma.pdf`);
 
-    const activeSig = await Signature.findOne({ isActive: true });
-    let signaturePath = '';
-    let signatoryLabel = '';
-    if (activeSig) {
-      signaturePath = path.join(__dirname, '..', activeSig.filePath);
-      signatoryLabel = activeSig.signatoryLabel;
-    }
+    // Use the signature that was active at issuance, not the current one
+    const { signaturePath, signatoryLabel } = await resolveSignatureForCert(cert);
 
     const studentData = {
       rollNo: cert.rollNo,
@@ -574,6 +598,28 @@ const getActiveSignature = async (req, res) => {
   }
 };
 
+// Public: Resolve the correct signature for a specific certificate.
+// Returns { filePath, signatoryLabel } using the stored signatureId, with
+// fallback to the current active signature for older records.
+const getSignatureForCert = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const cert = await DiplomaCertificate.findById(id).select('signatureId');
+    if (!cert) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+    const { signaturePath, signatoryLabel } = await resolveSignatureForCert(cert);
+    // signaturePath is an absolute disk path — convert to a relative API path
+    // so the frontend can fetch it via the /uploads static route.
+    const relPath = signaturePath
+      ? 'uploads/' + require('path').basename(signaturePath)
+      : '';
+    res.status(200).json({ filePath: relPath, signatoryLabel });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to resolve signature', error: error.message });
+  }
+};
+
 // Deactivate signature
 const deactivateSignature = async (req, res) => {
   try {
@@ -599,13 +645,8 @@ const saveToDrive = async (req, res) => {
     // Use a unique temp filename to avoid collisions from concurrent requests
     const outputPath = path.join(__dirname, `../uploads/${cert.rollNo}_${Date.now()}_drive.pdf`);
 
-    const activeSig = await Signature.findOne({ isActive: true });
-    let signaturePath = '';
-    let signatoryLabel = '';
-    if (activeSig) {
-      signaturePath = path.join(__dirname, '..', activeSig.filePath);
-      signatoryLabel = activeSig.signatoryLabel;
-    }
+    // Use the signature that was active at issuance, not the current one
+    const { signaturePath, signatoryLabel } = await resolveSignatureForCert(cert);
 
     const studentData = {
       rollNo: cert.rollNo,
@@ -665,6 +706,7 @@ module.exports = {
   deleteDiploma,
   uploadSignature,
   getActiveSignature,
+  getSignatureForCert,
   deactivateSignature,
   saveToDrive
 };

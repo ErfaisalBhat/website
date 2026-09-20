@@ -61,6 +61,14 @@ const diplomaCertificateSchema = new mongoose.Schema({
   driveUrl: {
     type: String,
     default: ''
+  },
+  // Reference to the Signature record active at the time of issuance.
+  // Used so that if the signature is later changed, old certificates
+  // still render with the original signatory's image and label.
+  signatureId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Signature',
+    default: null
   }
 }, {
   timestamps: true

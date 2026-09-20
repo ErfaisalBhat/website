@@ -24,7 +24,12 @@ const DiplomaCertificateTemplate = ({ certificateData }) => {
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   React.useEffect(() => {
-    fetch(`${API_URL}/api/diplomas/active-signature`)
+    // Fetch the signature that was stored at issuance time for THIS certificate,
+    // not simply the current active signature.
+    const certId = certificateData?._id;
+    if (!certId) return;
+
+    fetch(`${API_URL}/api/diplomas/cert-signature/${certId}`)
       .then(res => res.json())
       .then(data => {
         if (data && data.filePath) {
@@ -32,7 +37,7 @@ const DiplomaCertificateTemplate = ({ certificateData }) => {
         }
       })
       .catch(err => console.error("Error loading signature:", err));
-  }, []);
+  }, [certificateData?._id]);
 
   // Renders a mark cell; blank/undefined marks are shown as "-"
   const fmtMark = (val) => {
