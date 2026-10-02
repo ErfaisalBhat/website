@@ -78,7 +78,7 @@ const AdminDashboard = () => {
   const [certSignatureFile, setCertSignatureFile] = useState(null);
   const [certSignatureRole, setCertSignatureRole] = useState('Verifying Authority');
   const [authLabelInput, setAuthLabelInput] = useState('Verifying Authority');
-  const [controllerLabelInput, setControllerLabelInput] = useState('Controller of Examination');
+  const [controllerLabelInput, setControllerLabelInput] = useState('O.S.D. (Examination)');
 
   const [activeSignature, setActiveSignature] = useState(null);
   const [signatureFile, setSignatureFile] = useState(null);
@@ -930,15 +930,20 @@ const AdminDashboard = () => {
                                   className="max-h-full max-w-full object-contain mix-blend-multiply" 
                                 />
                               </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="text-[10px] text-slate-400 font-medium">Uploaded: {new Date(sig.uploadedAt).toLocaleDateString()}</p>
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleDeactivateCertSignature(sig._id)}
-                                  className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-700 transition-all active:scale-[0.98] shrink-0"
-                                >
-                                  Deactivate
-                                </button>
+                              <div className="flex items-center justify-between gap-2 mt-2">
+                                <span className="bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
+                                  {sig.role === 'Controller of Examination' ? 'O.S.D. (Examination)' : sig.role}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-[10px] text-slate-400 font-medium">Uploaded: {new Date(sig.uploadedAt).toLocaleDateString()}</p>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => handleDeactivateCertSignature(sig._id)}
+                                    className="bg-red-50 text-red-600 border border-red-100 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 hover:text-red-700 transition-all active:scale-[0.98] shrink-0"
+                                  >
+                                    Deactivate
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -972,12 +977,12 @@ const AdminDashboard = () => {
                               className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
                             />
                           </label>
-                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
+                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'O.S.D. (Examination)' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
                             <input 
                               type="radio" 
                               name="signatureRole" 
-                              value="Controller of Examination" 
-                              checked={certSignatureRole === 'Controller of Examination'} 
+                              value="O.S.D. (Examination)" 
+                              checked={certSignatureRole === 'O.S.D. (Examination)'} 
                               onChange={(e) => setCertSignatureRole(e.target.value)} 
                               className="sr-only"
                             />
@@ -985,8 +990,8 @@ const AdminDashboard = () => {
                               type="text"
                               value={controllerLabelInput}
                               onChange={(e) => setControllerLabelInput(e.target.value)}
-                              onClick={(e) => setCertSignatureRole('Controller of Examination')}
-                              placeholder="Controller of Examination"
+                              onClick={(e) => setCertSignatureRole('O.S.D. (Examination)')}
+                              placeholder="O.S.D. (Examination)"
                               className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
                             />
                           </label>
@@ -2053,7 +2058,7 @@ const AdminDashboard = () => {
                           <div className="flex flex-col items-center gap-1">
                             {r.student?.profileImageId ? (
                               <img 
-                                src={r.student?.profileImageId?.startsWith('http') ? r.student.profileImageId : `${API_URL}/api/admin/student-photo/${r.student._id}`} 
+                                src={`${API_URL}/api/admin/student-photo/${r.student._id}`} 
                                 alt="Student" 
                                 className="w-8 h-8 rounded-full object-cover border"
                               />

@@ -612,7 +612,7 @@ const uploadCertificateSignature = async (req, res) => {
     }
 
     const { role } = req.body;
-    if (!role || !['Verifying Authority', 'Controller of Examination'].includes(role)) {
+    if (!role || !['Verifying Authority', 'O.S.D. (Examination)'].includes(role)) {
       return res.status(400).json({ message: 'Invalid or missing signature role' });
     }
 
