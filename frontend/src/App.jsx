@@ -11,6 +11,13 @@ import VerifyCertificate from './components/VerifyCertificate';
 import StudentDiplomaDownload from './components/StudentDiplomaDownload';
 import NotFound from './components/NotFound';
 
+// Detect which subdomain we're on:
+// results.vminstitute.in  → student portal
+// admin.vminstitute.in    → admin/teacher portal
+const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+const isStudentDomain = hostname === 'results.vminstitute.in' || hostname === 'localhost';
+const isAdminDomain   = hostname === 'admin.vminstitute.in';
+
 function App() {
   return (
     <AuthProvider>
@@ -42,7 +49,17 @@ function App() {
           <Route path="/student/login" element={<StudentLogin />} />
           <Route path="/student/diploma" element={<StudentDiplomaDownload />} />
           <Route path="/student/results" element={<Navigate to="/student" replace />} />
-          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Root "/" — redirect based on subdomain */}
+          <Route
+            path="/"
+            element={
+              isAdminDomain
+                ? <Navigate to="/login" replace />       // admin.vminstitute.in → admin login
+                : <Navigate to="/student/login" replace /> // results.vminstitute.in → student login
+            }
+          />
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
@@ -50,4 +67,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

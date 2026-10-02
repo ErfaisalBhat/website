@@ -1,10 +1,10 @@
 const User = require('../models/User');
 const Result = require('../models/Result');
 const FileUpload = require('../models/FileUpload');
+const CertificateSignature = require('../models/CertificateSignature');
 const { processCSV, processExcel } = require('../utils/fileParser');
 const mongoose = require('mongoose');
 const { uploadFileToDrive, deleteFileFromDrive } = require('../utils/googleDriveUploader');
-const mailSender = require('../utils/mailSender');
 
 // Admin uploads student data -> Creates "draft" results
 const uploadStudents = async (req, res) => {
@@ -16,7 +16,7 @@ const uploadStudents = async (req, res) => {
     console.log(`Starting upload for subject: ${subject}, file: ${req.file.originalname}`);
 
     const batchId = `BATCH-${Date.now()}`;
-    const batchName = `${subject} - ${new Date().toISOString().split('T')[0]}`;
+    const batchName = `${subject}`;
     const distinctBatchIds = await Result.distinct('batchId');
     const batchSeq = distinctBatchIds.length + 1;
 
@@ -97,13 +97,7 @@ const uploadStudents = async (req, res) => {
 const assignBatch = async (req, res) => {
   try {
     const { batchId, teacherId } = req.body;
-    if (!batchId || !teacherId) {
-      return res.status(400).json({ message: 'batchId and teacherId are required' });
-    }
-    await Result.updateMany(
-      { batchId },
-      { uploadedBy: new mongoose.Types.ObjectId(teacherId) }
-    );
+    await Result.updateMany({ batchId }, { uploadedBy: teacherId });
     res.json({ message: 'Batch assigned to teacher successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error assigning batch', error: error.message });
@@ -135,7 +129,7 @@ const getDraftBatches = async (req, res) => {
           as: 'uploader'
         }
       },
-      { $unwind: { path: '$uploader', preserveNullAndEmptyArrays: true } },
+      { $unwind: '$uploader' },
       { $sort: { createdAt: -1 } }
     ]);
     res.json(batches);
@@ -237,7 +231,7 @@ const deleteApprovedBatch = async (req, res) => {
       }
     }
 
-    res.json({ message: 'Records deleted successfully' });
+    res.json({ message: ' records deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error deleting approved batch', error: error.message });
   }
@@ -246,30 +240,43 @@ const deleteApprovedBatch = async (req, res) => {
 const approveBatch = async (req, res) => {
   try {
     const { batchId } = req.params;
-    
+
     // Check if all students in the batch have photos uploaded
     const results = await Result.find({ batchId }).populate('student');
     const missingPhotos = results.filter(r => !r.student || !r.student.profileImageId);
-    
+
     if (missingPhotos.length > 0) {
-      const missingRollNos = missingPhotos.map(r => r.rollNo || 'unknown').join(', ');
-      return res.status(400).json({ 
-        message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos. Roll No(s): ${missingRollNos}` 
-      });
+      return res.status(400).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
     }
 
-    // NOTE: Signature snapshot is NOT taken here anymore.
-    // It is taken at the moment of FIRST certificate download (when certificateNo is assigned).
-    // This ensures that if a signature is updated after approval but before any student
-    // downloads, the new signature is reflected on those new records.
+    // ── Snapshot active signatures at approval time ──────────────────────────
+    // Permanently locks the current active sigs into every result in this batch.
+    // Even if sigs change/deactivate later, these results always use the snapshot.
+    // Roles in DB: left='Controller of Examination', right='O.S.D. (Examination)'
+    const activeSignatures = await CertificateSignature.find({ isActive: true });
+    const controllerSig = activeSignatures.find(s => s.role === 'Controller of Examination');
+    const authSig       = activeSignatures.find(s => s.role === 'O.S.D. (Examination)');
 
-    await Result.updateMany({ batchId }, { status: 'approved', approvedAt: new Date() });
+    const snapshotControllerSignatureImage = controllerSig ? (controllerSig.imageData || controllerSig.filePath || null) : null;
+    const snapshotControllerSignatureLabel = controllerSig ? (controllerSig.signatoryLabel || 'Controller of Examination') : null;
+    const snapshotAuthSignatureImage       = authSig       ? (authSig.imageData       || authSig.filePath       || null) : null;
+    const snapshotAuthSignatureLabel       = authSig       ? (authSig.signatoryLabel   || 'O.S.D. (Examination)')       : null;
+
+    await Result.updateMany({ batchId }, {
+      status: 'approved',
+      approvedAt: new Date(),
+      snapshotAuthSignatureImage,
+      snapshotAuthSignatureLabel,
+      snapshotControllerSignatureImage,
+      snapshotControllerSignatureLabel,
+    });
+
+    console.log(`Batch ${batchId} approved. Signatures snapshotted into ${results.length} results.`);
     res.json({ message: 'Batch approved successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Error approving batch', error: error.message });
   }
 };
-
 
 const disapproveBatch = async (req, res) => {
   try {
@@ -345,36 +352,6 @@ const addTeacher = async (req, res) => {
     if (teacherExists) return res.status(201).json({ message: 'Teacher already exists' });
 
     const teacher = await User.create({ name, email, password, role: 'teacher' });
-    
-    // Send email with login credentials
-    const emailTitle = 'VMI Teacher Dashboard - Account Login Credentials';
-    const emailBody = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333; border: 1px solid #e0e0e0; border-radius: 8px;">
-        <div style="text-align: center; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid #eee;">
-          <img src="https://assets.zyrosite.com/ALpPGp62aqt3yaO1/vmi-logo-mnlJkkXz42tMJO2O.png" alt="VMI Logo" style="max-width: 150px; height: auto;" />
-        </div>
-        <h2 style="color: #2c3e50; font-size: 22px;">Welcome to VMI, ${name}</h2>
-        <p style="font-size: 16px; line-height: 1.5;">An administrator has successfully set up your faculty account for the Varāhamihira Multidisciplinary Institute Teacher Dashboard.</p>
-        <p style="font-size: 16px; line-height: 1.5;">Please find your secure login credentials below:</p>
-        
-        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #4CAF50;">
-          <p style="margin: 5px 0; font-size: 15px;"><b>Email:</b> ${email}</p>
-          <p style="margin: 5px 0; font-size: 15px;"><b>Password:</b> ${password}</p>
-        </div>
-        
-        <p style="font-size: 15px; color: #555; line-height: 1.5;">For security purposes, we highly recommend keeping these credentials strictly confidential.</p>
-        <p style="font-size: 15px; line-height: 1.5; margin-top: 30px;">
-          Best regards,<br>
-          <strong>VMI Administration Team</strong>
-        </p>
-        
-        <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #888;">
-          <p>This is an auto-generated message. Please do not reply to this email.</p>
-        </div>
-      </div>
-    `;
-    await mailSender(email, emailTitle, emailBody);
-
     res.status(201).json({ _id: teacher._id, name: teacher.name, email: teacher.email, role: teacher.role });
   } catch (error) {
     res.status(500).json({ message: 'Error adding teacher', error: error.message });
@@ -409,23 +386,6 @@ const changeTeacherPassword = async (req, res) => {
 
     user.password = newPassword; // Hashing handled by pre-save hook
     await user.save();
-
-    // Send email about password change
-    const emailTitle = 'Your Teacher Dashboard Password Has Been Updated';
-    const emailBody = `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <img src="https://assets.zyrosite.com/ALpPGp62aqt3yaO1/vmi-logo-mnlJkkXz42tMJO2O.png" alt="VMI Logo" style="max-width: 150px; height: auto;" />
-        </div>
-        <h2>Hello ${user.name},</h2>
-        <p>Your password for the VMI Teacher Dashboard has been successfully updated by the admin.</p>
-        <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; margin: 15px 0;">
-          <p style="margin: 5px 0;"><b>Email:</b> ${user.email}</p>
-          <p style="margin: 5px 0;"><b>New Password:</b> ${newPassword}</p>
-        </div>
-      </div>
-    `;
-    await mailSender(user.email, emailTitle, emailBody);
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
@@ -563,120 +523,119 @@ const uploadStudentPhoto = async (req, res) => {
   }
 };
 
+
+// Get student photo URL by student ID (public route — no auth)
 const getStudentPhoto = async (req, res) => {
   try {
-    const student = await User.findById(req.params.id);
-    if (!student || !student.profileImageId) {
-      return res.status(404).send('Photo not found');
-    }
-    const url = student.profileImageId;
-    if (url.startsWith('http')) {
-      const axios = require('axios');
-      // Add a browser-like User-Agent so Google's CDN serves the actual image
-      // instead of redirecting to an HTML error page
-      const response = await axios.get(url, {
-        responseType: 'arraybuffer',
-        maxRedirects: 5,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
-          'Referer': 'https://drive.google.com/',
-        },
-      });
-      // Make sure we got an image back (not HTML redirect/error page)
-      const contentType = response.headers['content-type'] || 'image/jpeg';
-      if (!contentType.startsWith('image/')) {
-        return res.status(502).send('Failed to fetch photo from storage');
-      }
-      res.set('Content-Type', contentType);
-      res.set('Cache-Control', 'public, max-age=3600');
-      res.send(response.data);
-    } else {
-      const path = require('path');
-      res.sendFile(path.join(__dirname, '..', 'uploads', url));
-    }
-  } catch (err) {
-    console.error('getStudentPhoto error:', err.message);
-    res.status(500).send('Error fetching photo');
+    const { id } = req.params;
+    const student = await User.findById(id).select('profileImageId');
+    if (!student) return res.status(404).json({ message: 'Student not found' });
+    res.json({ imageUrl: student.profileImageId || null });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching student photo', error: error.message });
   }
 };
 
-const CertificateSignature = require('../models/CertificateSignature');
-const path = require('path');
-const fs = require('fs');
-
+// Upload a certificate signature (Verifying Authority or Controller of Examination)
 const uploadCertificateSignature = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
-    }
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const { role } = req.body;
-    if (!role || !['Verifying Authority', 'O.S.D. (Examination)'].includes(role)) {
-      return res.status(400).json({ message: 'Invalid or missing signature role' });
-    }
+    const { role, signatoryLabel } = req.body;
+    if (!role) return res.status(400).json({ message: 'Role is required' });
 
-    const mimeType = req.file.mimetype;
-    const extension = path.extname(req.file.originalname).toLowerCase();
+    // Convert file buffer to base64 data URI for storage
+    const mimeType = req.file.mimetype || 'image/png';
+    const base64 = req.file.buffer.toString('base64');
+    const dataUri = `data:${mimeType};base64,${base64}`;
 
-    if (mimeType !== 'image/png' || extension !== '.png') {
-      return res.status(400).json({ message: 'Only PNG images are allowed' });
-    }
+    // Deactivate any existing signature for this role before adding new one
+    await CertificateSignature.updateMany({ role }, { isActive: false });
 
-    // Convert to base64 data URL — stored in MongoDB so no filesystem needed
-    const imageData = `data:image/png;base64,${req.file.buffer.toString('base64')}`;
-
-    // Also write to disk as fallback
-    const filename = `cert-sig-${role.replace(/\s+/g, '')}-${Date.now()}.png`;
-    const uploadPath = path.join(__dirname, '../uploads', filename);
-
-    const uploadsDir = path.dirname(uploadPath);
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-
-    fs.writeFileSync(uploadPath, req.file.buffer);
-    const filePath = `uploads/${filename}`;
-
-    // Deactivate previous signature for this specific role
-    await CertificateSignature.updateMany({ isActive: true, role }, { isActive: false });
-
-    const newSignature = await CertificateSignature.create({
-      filePath: filePath,
-      imageData: imageData,
-      role: role,
-      signatoryLabel: req.body.signatoryLabel || role,
+    const signature = await CertificateSignature.create({
+      role,
+      signatoryLabel: signatoryLabel || role,
+      imageData: dataUri,
+      filePath: dataUri,
       isActive: true,
-      uploadedBy: req.user._id
+      uploadedBy: req.user._id,
     });
 
-    res.status(200).json(newSignature);
+    res.status(201).json({ message: 'Signature uploaded successfully', signature });
   } catch (error) {
-    console.error('Certificate Signature Upload Error:', error);
-    res.status(500).json({ message: 'Signature upload failed', error: error.message });
+    res.status(500).json({ message: 'Error uploading signature', error: error.message });
   }
 };
 
+// Get all active certificate signatures
 const getActiveCertificateSignature = async (req, res) => {
   try {
-    const activeSigs = await CertificateSignature.find({ isActive: true });
-    res.status(200).json(activeSigs);
+    const signatures = await CertificateSignature.find({ isActive: true });
+    res.json(signatures);
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch signature', error: error.message });
+    res.status(500).json({ message: 'Error fetching signatures', error: error.message });
   }
 };
 
+// Deactivate a certificate signature by ID
 const deactivateCertificateSignature = async (req, res) => {
   try {
     const { id } = req.params;
-    const sig = await CertificateSignature.findById(id);
-    if (sig) {
-      sig.isActive = false;
-      await sig.save();
-    }
-    res.status(200).json({ message: 'Signature deactivated' });
+    const signature = await CertificateSignature.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true }
+    );
+    if (!signature) return res.status(404).json({ message: 'Signature not found' });
+    res.json({ message: 'Signature deactivated successfully' });
   } catch (error) {
-    res.status(500).json({ message: 'Deactivation failed', error: error.message });
+    res.status(500).json({ message: 'Error deactivating signature', error: error.message });
+  }
+};
+
+// Reset & re-snapshot already-ISSUED Result records with correct OSD + Controller signatures.
+// Only targets results that already have a certificateNo (i.e. student has already downloaded once).
+// Results that are approved but NOT yet issued are intentionally skipped — they still carry the
+// correct approveBatch snapshot and will pick up the right signatures on first download.
+const resetSignatureSnapshots = async (req, res) => {
+  try {
+    const Result = require('../models/Result');
+
+    // Fetch the currently active signatures using the correct role names
+    const [osdSig, ctrlSig] = await Promise.all([
+      CertificateSignature.findOne({ role: 'O.S.D. (Examination)', isActive: true }).sort({ createdAt: -1 }),
+      CertificateSignature.findOne({ role: 'Controller of Examination', isActive: true }).sort({ createdAt: -1 }),
+    ]);
+
+    if (!osdSig && !ctrlSig) {
+      return res.status(404).json({ message: 'No active signatures found. Upload both signatures first.' });
+    }
+
+    const updateFields = {};
+    if (osdSig) {
+      updateFields.snapshotAuthSignatureImage = osdSig.imageData || null;
+      updateFields.snapshotAuthSignatureLabel = osdSig.signatoryLabel || 'O.S.D. (Examination)';
+    }
+    if (ctrlSig) {
+      updateFields.snapshotControllerSignatureImage = ctrlSig.imageData || null;
+      updateFields.snapshotControllerSignatureLabel = ctrlSig.signatoryLabel || 'Controller of Examination';
+    }
+
+    // Only fix results that have ALREADY been issued (have a certificateNo).
+    // Approved-but-not-yet-issued results keep their approveBatch snapshot and are left untouched.
+    const result = await Result.updateMany(
+      { status: 'approved', certificateNo: { $exists: true, $ne: null, $ne: '' } },
+      { $set: updateFields }
+    );
+
+    res.json({
+      message: `Snapshots reset on ${result.modifiedCount} issued certificate(s). Unissued results were not affected.`,
+      modifiedCount: result.modifiedCount,
+      osdLabel: osdSig?.signatoryLabel || null,
+      controllerLabel: ctrlSig?.signatoryLabel || null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error resetting snapshots', error: error.message });
   }
 };
 
@@ -701,5 +660,6 @@ module.exports = {
   getStudentPhoto,
   uploadCertificateSignature,
   getActiveCertificateSignature,
-  deactivateCertificateSignature
+  deactivateCertificateSignature,
+  resetSignatureSnapshots
 };

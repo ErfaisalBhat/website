@@ -36,20 +36,23 @@ const uploadCertificatePdf = async (req, res) => {
     const { rollNo, type, resultId, certificateNo } = req.body;
     console.log(`[pdfUploadController] Received upload request. Type: ${type}, RollNo: ${rollNo}, ResultId: ${resultId}, CertNo: ${certificateNo}`);
 
-    // ── Compute content hash ────────────────────────────────────────────────
-    const currentHash = computeStableHash(req.file.buffer);
-
-    // ── For student certificates: version-aware upload ───────────────────────
+    // ── For student certificates ─────────────────────────────────────────────
+    // SAVE RULE:
+    //   • Same rollNo + same course (same resultId) → saved ONCE, never again
+    //   • Same rollNo + different course            → saved separately (different resultId)
+    //   • html2canvas always gives different binary, so hash-based dedup is
+    //     replaced by a simple "already saved" flag: certificateDriveLatestHash
+    // ─────────────────────────────────────────────────────────────────────────
     if (resultId && type === 'certificate') {
-      // Fast path: only fetch hash for the skip-check (1 DB query)
+
+      // Check if this exact result was already saved to Drive
       const existing = await Result.findById(resultId)
-        .select('certificateDriveLatestHash certificateNo rollNo')
+        .select('certificateDriveLatestHash certificateDriveVersions certificateNo rollNo')
         .lean();
 
-      // If we have already uploaded this certificate once, skip uploading again.
-      // (html2canvas produces slightly different binaries every time, so hashing fails)
       if (existing && existing.certificateDriveLatestHash) {
-        console.log(`[pdfUploadController] Certificate already saved to Drive. Skipping duplicate upload.`);
+        // Already saved once — skip silently, no duplicate file created
+        console.log(`[pdfUploadController] Already saved once for resultId ${resultId}. Skipping.`);
         return res.json({
           message: 'Certificate already saved (skipped duplicate upload)',
           fileId: null,
@@ -57,58 +60,41 @@ const uploadCertificatePdf = async (req, res) => {
         });
       }
 
-      // Hash differs (or first upload) → we need the version count for the filename.
-      // Use aggregate to get count + last entry without pulling the whole array.
-      let versionCount = 0;
-      if (existing) {
-        const agg = await Result.aggregate([
-          { $match: { _id: existing._id } },
-          { $project: {
-            count: { $size: { $ifNull: ['$certificateDriveVersions', []] } }
-          }}
-        ]);
-        if (agg.length) { versionCount = agg[0].count; }
-      }
+      // First save for this result → upload to Drive
+      const certNo    = certificateNo || existing?.certificateNo || resultId;
+      const fileName  = `${rollNo || 'Student'}_${certNo}.pdf`;
+      const folderId  = process.env.GOOGLE_DRIVE_CERTIFICATE_FOLDER_ID || process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-      // ── Build a unique, descriptive filename ──────────────────────────────
-      // Format: {RollNo}_{CertificateNo}_v{version}.pdf
-      // e.g.   12345_2526001_v1.pdf, 12345_2526001_v2.pdf
-      const certNo = certificateNo || existing?.certificateNo || resultId;
-      const versionNum = versionCount + 1;
-      const fileName = `${rollNo || 'Student'}_${certNo}_v${versionNum}.pdf`;
+      console.log(`[pdfUploadController] First save for resultId ${resultId}. Uploading as: ${fileName}`);
 
-      // ── Determine target Drive folder ─────────────────────────────────────
-      let folderId = process.env.GOOGLE_DRIVE_CERTIFICATE_FOLDER_ID || process.env.GOOGLE_DRIVE_FOLDER_ID;
-      console.log(`[pdfUploadController] Using Certificate Folder ID: ${folderId}`);
-
-      // ── Upload as a NEW file (never overwrite) ────────────────────────────
       const driveResult = await createFileOnDrive({
-        buffer: req.file.buffer,
+        buffer:   req.file.buffer,
         mimeType: 'application/pdf',
         fileName,
         folderId
       });
 
-      // ── Append new version to the array and update latest hash ────────────
+      // Mark as saved — use a non-null hash value so the flag is set
+      const savedHash = computeStableHash(req.file.buffer);
+
       await Result.findByIdAndUpdate(resultId, {
         $push: {
           certificateDriveVersions: {
-            fileId: driveResult.fileId,
-            hash: currentHash,
+            fileId:     driveResult.fileId,
+            hash:       savedHash,
             fileName,
             uploadedAt: new Date()
           }
         },
-        $set: { certificateDriveLatestHash: currentHash }
+        $set: { certificateDriveLatestHash: savedHash }
       });
 
-      console.log(`[pdfUploadController] Saved new version (v${versionNum}) with fileId: ${driveResult.fileId} for result ${resultId}`);
+      console.log(`[pdfUploadController] Saved to Drive. FileId: ${driveResult.fileId}, Result: ${resultId}`);
 
       return res.json({
-        message: 'PDF uploaded to Google Drive successfully',
-        fileId: driveResult.fileId,
+        message:     'PDF uploaded to Google Drive successfully',
+        fileId:      driveResult.fileId,
         webViewLink: driveResult.webViewLink,
-        version: versionNum
       });
     }
 

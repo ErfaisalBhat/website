@@ -22,7 +22,8 @@ const {
   getStudentPhoto,
   uploadCertificateSignature,
   getActiveCertificateSignature,
-  deactivateCertificateSignature
+  deactivateCertificateSignature,
+  resetSignatureSnapshots
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -60,5 +61,6 @@ router.post('/signature', upload.single('file'), uploadCertificateSignature);
 router.get('/signature', getActiveCertificateSignature);
 router.delete('/signature/:id', deactivateCertificateSignature);
 router.post('/signature/:id/deactivate', deactivateCertificateSignature);
+router.post('/reset-signature-snapshots', resetSignatureSnapshots);
 
 module.exports = router;
