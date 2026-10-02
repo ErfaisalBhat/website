@@ -239,7 +239,7 @@ const CertificateTemplate = ({ certificateData }) => {
             </div>
             <div style={{ fontSize:hindiNameFontSize, margin:'4px 0 8px' }}>
               <b style={{ ...arya, verticalAlign: 'baseline' }}>{candidateNameHindi}</b>
-              <span style={{ ...kokila, fontSize:'22px', margin:'0 5px', verticalAlign: 'baseline', position: 'relative', top: '-2px' }}>सुपुत्र/सुपुत्री</span>
+              <span style={{ ...kokila, fontSize:'22px', margin:'0 5px', verticalAlign: 'baseline', position: 'relative', top: '-5px' }}>सुपुत्र/सुपुत्री</span>
               <b style={{ ...arya, verticalAlign: 'baseline' }}>{fatherNameHindi}</b>
             </div>
             <div style={divider} />
