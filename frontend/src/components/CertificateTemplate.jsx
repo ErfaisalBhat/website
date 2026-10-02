@@ -1,6 +1,18 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
+/* ── Designations (Hindi first, then English) — edit here if the wording changes ── */
+const OSD_HINDI        = 'विशेष कार्य अधिकारी (परीक्षा)';
+const OSD_ENGLISH      = 'O.S.D. (Examination)';
+const CONTROLLER_HINDI = 'परीक्षा नियंत्रक';
+const CONTROLLER_ENGLISH = 'Controller of Examination';
+
+/* ── Bottom disclaimer ── */
+const DISCLAIMER_HINDI =
+  '(यह प्रमाणपत्र डिजिटल रूप से जारी किया गया है और इस संस्थान के होलोग्राम के बिना इसका प्रिंट अमान्य है।)';
+const DISCLAIMER_ENGLISH =
+  '(This certificate is digitally issued and printing it is invalid without the Institute hologram.)';
+
 const CertificateTemplate = ({ certificateData }) => {
   const {
     rollNo, enrolmentNo, courseNameHindi, courseNameEnglish,
@@ -51,8 +63,12 @@ const CertificateTemplate = ({ certificateData }) => {
     ? `${currentOrigin}/verify?certNo=${displayCertificateNo}`
     : `${currentOrigin}/verify`;
 
-  /* ── Font shorthand objects ── */
-  const kokila = { fontFamily: "'Kokila','Noto Sans Devanagari',serif" };
+  /* ── Font shorthand objects ──
+     Kokila only ships a regular weight and looks thin on the certificate, so every
+     Kokila text is requested bold (browser synthesises the weight). If it is still
+     too light, switch HINDI_FONT_WEIGHT to 'bold' + add a real Kokila-Bold.ttf @font-face,
+     or use the Arya family for Hindi. */
+  const kokila = { fontFamily: "'Kokila','Noto Sans Devanagari',serif", color: '#000' };
   const arya   = { fontFamily: "'Arya','Noto Sans Devanagari',sans-serif", fontWeight: 'bold' };
   const oldEng = { fontFamily: "'Old English Text MT','UnifrakturMaguntia',serif", fontWeight: 'bold' };
   const tahoma = { fontFamily: "'Tahoma','Arial',sans-serif" };
@@ -60,17 +76,12 @@ const CertificateTemplate = ({ certificateData }) => {
   /* ── Dynamic font sizes ── */
   const hindiNameLen      = (candidateNameHindi   || '').length + (fatherNameHindi   || '').length;
   const hindiNameFontSize = hindiNameLen > 30 ? '17px' : hindiNameLen > 22 ? '19px' : '21px';
-  const engNameLen        = (candidateNameEnglish || '').length + (fatherNameEnglish || '').length;
-  const engNameFontSize   = engNameLen > 40 ? '11.5px' : '13px';
-  const remarkLen         = (resultRemarkEnglish  || '').length;
-  const remarkHindiFontSize = remarkLen > 15 ? '10px' : '11px';
-  const remarkEngFontSize   = remarkLen > 15 ? '9px'  : '10px';
 
   /* ── Shared table-cell styles ── */
   const thBase = {
     border: '1px solid #000',
-    padding: '6px 4px 8px 4px',
-    lineHeight: 1.35,
+    padding: '5px 4px 6px 4px',
+    lineHeight: 1.25,
     textAlign: 'center',
     verticalAlign: 'middle',
     backgroundColor: 'transparent',
@@ -81,26 +92,47 @@ const CertificateTemplate = ({ certificateData }) => {
   };
   const tdBase = {
     border: '1px solid #000',
-    padding: '6px 4px 8px 4px',
-    lineHeight: 1.35,
+    padding: '4px 4px 6px 4px',
+    lineHeight: 1.25,
     textAlign: 'center',
     verticalAlign: 'middle',
   };
+  /* Table value cells (codes, marks) — larger and bold so the table looks full */
+  const tdValue = { ...tdBase, fontSize: '16px', fontWeight: 'bold' };
 
-  /* ── Hindi + English on the same line: align on the shared TEXT BASELINE ──
-     Kokila and Tahoma have different ascent/descent metrics, so centering their
-     boxes makes Hindi look high and English look low. Baseline alignment fixes it. */
-  const lineRow = { display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap' };
+  /* ── Mixed Hindi + English lines: every piece of text is its OWN absolutely-positioned layer ──
+     Each piece sits in a fixed-height slot (ROW_H). The visible text is position:absolute inside
+     that slot, with line-height:1 and a `top` we control, so its position no longer depends on
+     the other language's font metrics or on any shared baseline.
+       HINDI_Y / ENG_Y : extra nudge in px.  + = DOWN, - = UP.
+     Hindi printing high  -> raise HINDI_Y (e.g. 2, 3, 4).  English printing low -> lower ENG_Y (e.g. -1, -2).
+     (An invisible copy of the text is kept in the slot only so the row knows how wide each piece is.) */
+  const ROW_H   = 28;
+  const HINDI_Y = -3;   // Hindi was printing low -> moved UP 3px (more negative = higher)
+  const ENG_Y   = 0;
 
-  /* Fine-tune knob (px): positive = pushes Hindi DOWN, negative = pushes it UP.
-     Judge this from the downloaded PDF, since html2canvas can shift baselines 1–3px. */
-  const HINDI_NUDGE = '0px';
+  const piece = (text, font, size, dy, extra = {}) => {
+    const top = Math.round((ROW_H - size) / 2) + dy;
+    return (
+      <span style={{ position:'relative', display:'inline-block', height:`${ROW_H}px`, whiteSpace:'pre', ...extra }}>
+        <span aria-hidden="true" style={{ ...font, visibility:'hidden', fontSize:`${size}px`, lineHeight:`${ROW_H}px` }}>{text}</span>
+        <span style={{ ...font, position:'absolute', left:0, top:`${top}px`, fontSize:`${size}px`, lineHeight:1, whiteSpace:'pre' }}>{text}</span>
+      </span>
+    );
+  };
+  const hi = (text, size = 22, extra = {}) => piece(text, kokila, size, HINDI_Y, extra);
+  const en = (text, size = 15, extra = {}) => piece(text, tahoma, size, ENG_Y, extra);
+  const lineRow = { display:'flex', alignItems:'flex-start', whiteSpace:'nowrap', height:`${ROW_H}px` };
 
-  const piece = { display: 'inline-block', lineHeight: 1.3, whiteSpace: 'nowrap' };
-  const hindiPiece = { ...piece, ...kokila, position: 'relative', top: HINDI_NUDGE };
+  /* Flexible gap: leftover page height is shared evenly between sections, so nothing sits empty at the bottom */
+  const spacer = <div style={{ flex:'1 1 0', minHeight:0 }} />;
 
-  const divider = { borderBottom: '1.5px solid #000', margin: '2px 0' };
-  const hrStyle = { width: '100%', border: 'none', borderTop: '1.5px solid #333', margin: '3px 0' };
+  const divider = { borderBottom: '1.5px solid #000', margin: '8px 0' };
+  const hrStyle = { width: '100%', border: 'none', borderTop: '1.5px solid #333', margin: '4px 0 6px' };
+
+  /* Header info block (Enrolment / Roll / Certificate) — identical size + bold for all three */
+  const infoHindi = { ...kokila, fontSize: '14px', lineHeight: 1.3,fontWeight:'bold' };
+  const infoEng   = { ...tahoma, fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' };
 
   return (
     <>
@@ -136,35 +168,33 @@ const CertificateTemplate = ({ certificateData }) => {
           position:'absolute', top:0, left:0,
           width:'794px', height:'1122px',
           boxSizing:'border-box',
-          padding:'22px 46px 20px 46px',
+          padding:'16px 46px 58px 46px',
           display:'flex', flexDirection:'column',
         }}>
 
           {/* ══ HEADER ROW ══ */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'4px', marginTop:'10px' }}>
-            {/* Left: enrolment */}
-            <div style={{ width:'195px' }}>
-              <div style={{ ...kokila, fontSize:'14px', lineHeight:1.3 }}>नामांकन संख्या</div>
-              <div style={{ ...tahoma, fontSize:'11px' }}>Enrolment No. {enrolmentNo}</div>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'2px', marginTop:'18px' }}>
+            {/* Left: enrolment + certificate no. */}
+            <div style={{ width:'230px' }}>
+              <div style={infoHindi}>नामांकन संख्या</div>
+              <div style={infoEng}>Enrolment No. {enrolmentNo}</div>
               {certificateNo && (
-                <div style={{ marginTop:'6px', color:'#333' }}>
-                  <div style={{ ...kokila, fontSize:'14px', lineHeight:1.3 }}>प्रमाणपत्र संख्या</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>
-                    Certificate No.: {displayCertificateNo}
-                  </div>
+                <div style={{ marginTop:'6px' }}>
+                  <div style={infoHindi}>प्रमाणपत्र संख्या</div>
+                  <div style={infoEng}>Certificate No.: {displayCertificateNo}</div>
                 </div>
               )}
             </div>
 
             {/* Centre: logo */}
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
-              <img src="/VMI Logo.png" alt="VMI Logo" style={{ width:'95px', height:'95px', objectFit:'contain', position: 'relative', top: '15px' }} />
+              <img src="/VMI Logo.png" alt="VMI Logo" style={{ width:'84px', height:'84px', objectFit:'contain', position: 'relative', top: '8px' }} />
             </div>
 
-            {/* Right: roll no + photo stacked */}
-            <div style={{ width:'195px', textAlign:'right', position:'relative' }}>
-              <div style={{ ...kokila, fontSize:'13px', lineHeight:1.3 }}>अनुक्रमांक</div>
-              <div style={{ ...tahoma, fontSize:'12px' }}>Roll. No. {rollNo}</div>
+            {/* Right: roll no */}
+            <div style={{ width:'230px', textAlign:'right', position:'relative' }}>
+              <div style={infoHindi}>अनुक्रमांक</div>
+              <div style={infoEng}>Roll. No. {rollNo}</div>
             </div>
           </div>
 
@@ -184,22 +214,24 @@ const CertificateTemplate = ({ certificateData }) => {
           </div>
 
           {/* ══ INSTITUTE TITLE ══ */}
+          {/* Hindi is the larger line, English is reduced so the two look balanced */}
           <div style={{ textAlign:'center', lineHeight:1.2, marginBottom:'6px', marginTop:'8px' }}>
-            <div style={{ ...kokila, fontSize:'20px', marginBottom:'2px' }}>वराहमिहिर बहुविषयक संस्थान</div>
-            <div style={{ ...oldEng, fontSize:'26px' }}>Varāhamihira Multidisciplinary Institute</div>
+            <div style={{ ...arya, color:'#000', fontSize:'23px', marginBottom:'2px' }}>वराहमिहिर बहुविषयक संस्थान</div>
+            <div style={{ ...oldEng, fontSize:'19px' }}>Varahamihira Multidisciplinary Institute</div>
           </div>
 
+          {spacer}
           {/* ══ COURSE TITLE ══ */}
-          {/* Hindi on top, English below in uppercase to match the PDF */}
           <div style={{ textAlign:'center', lineHeight:1.25, marginBottom:'4px' }}>
             <div style={{ ...kokila, fontSize:'25px' }}>{courseNameHindi} प्रमाणपत्र</div>
-            <div style={{ ...tahoma, fontSize:'18px', letterSpacing:'0.6px', textTransform:'uppercase' }}>
+            <div style={{ ...tahoma, fontSize:'17px', fontWeight:'bold', letterSpacing:'0.6px', textTransform:'uppercase' }}>
               {courseNameEnglish}
             </div>
           </div>
 
+          {spacer}
           {/* ══ HINDI BODY ══ */}
-          <div style={{ textAlign:'center', lineHeight:1.4, marginBottom:'4px', marginTop:'20px' }}>
+          <div style={{ textAlign:'center', lineHeight:1.3, marginBottom:'2px', marginTop:'10px' }}>
             <div style={{ ...kokila, fontSize:'22px' }}>
               प्रमाणित किया जाता है कि सन्&nbsp;
               <b>{courseYearHindi}</b>&nbsp;में परीक्षा के उपरांत&nbsp;
@@ -216,8 +248,9 @@ const CertificateTemplate = ({ certificateData }) => {
             </div>
           </div>
 
+          {spacer}
           {/* ══ ENGLISH BODY ══ */}
-          <div style={{ textAlign:'center', lineHeight:1.45, marginBottom:'6px', marginTop:'22px', ...tahoma, fontSize:'15px' }}>
+          <div style={{ textAlign:'center', lineHeight:1.35, marginBottom:'4px', marginTop:'10px', ...tahoma, fontSize:'15px' }}>
             <div>
               This is to certify that having been examined in&nbsp;
               <b>{courseYearEnglish}</b> and found qualified for the certificate in
@@ -230,128 +263,124 @@ const CertificateTemplate = ({ certificateData }) => {
             <div>was awarded the said certificate at the conclave held in {courseYearEnglish}.</div>
           </div>
 
+          {spacer}
           {/* ══ SECTION HEADING ══ */}
-          <div style={{ ...lineRow, justifyContent: 'center', marginBottom:'6px', marginTop:'32px' }}>
-            <span style={{ ...hindiPiece, fontSize:'22px' }}>पाठ्यक्रम और अंक विवरण</span>
-            <span style={{ ...piece, margin:'0 8px', fontSize:'15px' }}>✱</span>
-            <span style={{ ...piece, ...tahoma, fontSize:'15px' }}>Course and Marks Description</span>
+          <div style={{ ...lineRow, justifyContent:'center', marginBottom:'4px', marginTop:'14px' }}>
+            {hi('पाठ्यक्रम और अंक विवरण')}
+            {en('✱', 15, { margin:'0 8px' })}
+            {en('Course and Marks Description')}
           </div>
 
+          {spacer}
           {/* ══ DURATION & MODE ══ */}
-          <div style={{ textAlign: 'left', marginLeft: '22px', marginBottom:'10px' }}>
+          <div style={{ textAlign:'left', marginLeft:'22px', marginBottom:'6px' }}>
             <div style={{ ...lineRow, marginBottom:'4px' }}>
-              <span style={{ ...hindiPiece, fontSize:'22px' }}>पाठ्यक्रम की अवधि</span>
-              <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / Duration of the Course: </span>
-              <span style={{ ...hindiPiece, fontSize:'22px', marginLeft:'15px' }}>{durationHindi}</span>
-              <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / {durationEnglish}</span>
+              {hi('पाठ्यक्रम की अवधि')}
+              {en(' / Duration of the Course: ')}
+              {hi(durationHindi, 22, { marginLeft:'15px' })}
+              {en(` / ${durationEnglish ?? ''}`)}
             </div>
             <div style={lineRow}>
-              <span style={{ ...hindiPiece, fontSize:'22px' }}>शिक्षण विधि</span>
-              <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / Mode of Teaching: </span>
-              <span style={{ ...hindiPiece, fontSize:'22px', marginLeft:'15px' }}>{modeHindi}</span>
-              <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / {modeEnglish}</span>
+              {hi('शिक्षण विधि')}
+              {en(' / Mode of Teaching: ')}
+              {hi(modeHindi, 22, { marginLeft:'15px' })}
+              {en(` / ${modeEnglish ?? ''}`)}
             </div>
           </div>
 
+          {spacer}
           {/* ══ MARKS TABLE ══ */}
-          <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'10px', tableLayout:'fixed' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'6px', tableLayout:'fixed' }}>
             <colgroup>
-              <col style={{ width:'7%'  }} />
+              <col style={{ width:'9%'  }} />
               <col style={{ width:'27%' }} />
-              <col style={{ width:'16%' }} />
+              <col style={{ width:'15%' }} />
               <col style={{ width:'14%' }} />
               <col style={{ width:'15%' }} />
-              <col style={{ width:'21%' }} />
+              <col style={{ width:'20%' }} />
             </colgroup>
             <thead>
               <tr>
-                {/* Sr. No. */}
                 <th style={thBase}>
                   <div style={{ ...kokila, fontSize:'18px' }}>क्रमांक</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Sr. No.</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Sr. No.</div>
                 </th>
-                {/* Papers */}
                 <th style={{ ...thBase, textAlign:'left', paddingLeft:'8px' }}>
                   <div style={{ ...kokila, fontSize:'18px' }}>परीक्षा पत्र</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Papers</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Papers</div>
                 </th>
-                {/* Sub Code */}
                 <th style={thBase}>
                   <div style={{ ...kokila, fontSize:'18px' }}>विषय कोड</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Sub. Code</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Sub. Code</div>
                 </th>
-                {/* Total Marks */}
                 <th style={thBase}>
                   <div style={{ ...kokila, fontSize:'18px' }}>पूर्णांक</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Total Marks</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Total Marks</div>
                 </th>
-                {/* Obtained Marks */}
                 <th style={thBase}>
                   <div style={{ ...kokila, fontSize:'18px' }}>प्राप्तांक</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Obtained Marks</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Obtained Marks</div>
                 </th>
-                {/* Details of Result */}
                 <th style={thBase}>
                   <div style={{ ...kokila, fontSize:'18px' }}>परिणाम का विवरण</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Details of Result</div>
+                  <div style={{ ...tahoma, fontSize:'13px' }}>Details of Result</div>
                 </th>
               </tr>
             </thead>
             <tbody>
               {/* Row 1 — Internal Assessment */}
               <tr>
-                <td style={{ ...tdBase, fontSize:'11px' }}>1.</td>
+                <td style={tdValue}>1.</td>
                 <td style={{ ...tdBase, textAlign:'left', paddingLeft:'8px' }}>
-                  <div style={{ ...kokila, fontSize:'18px' }}>आंतरिक मूल्यांकन</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Internal Assessment</div>
+                  <div style={{ ...kokila, fontSize:'19px' }}>आंतरिक मूल्यांकन</div>
+                  <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Internal Assessment</div>
                 </td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{iaSubCode}</td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{iaMaxMarks}</td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{iaMarks}</td>
+                <td style={tdValue}>{iaSubCode}</td>
+                <td style={tdValue}>{iaMaxMarks}</td>
+                <td style={tdValue}>{iaMarks}</td>
                 {/* rowspan 3 — result remark */}
                 <td rowSpan={3} style={{ ...tdBase, verticalAlign:'middle' }}>
-                  <div style={{ ...kokila, fontSize:"18px" }}>{resultRemarkHindi}</div>
-                  <div style={{ ...tahoma, fontSize:"11px"   }}>{resultRemarkEnglish}</div>
+                  <div style={{ ...kokila, fontSize:'20px' }}>{resultRemarkHindi}</div>
+                  <div style={{ ...tahoma, fontSize:'14px', fontWeight:'bold' }}>{resultRemarkEnglish}</div>
                 </td>
               </tr>
 
               {/* Row 2 — Main Examination */}
               <tr>
-                <td style={{ ...tdBase, fontSize:'11px' }}>2.</td>
+                <td style={tdValue}>2.</td>
                 <td style={{ ...tdBase, textAlign:'left', paddingLeft:'8px' }}>
-                  <div style={{ ...kokila, fontSize:'18px' }}>मुख्य परीक्षा</div>
-                  <div style={{ ...tahoma, fontSize:'10px' }}>Main Examination</div>
+                  <div style={{ ...kokila, fontSize:'19px' }}>मुख्य परीक्षा</div>
+                  <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Main Examination</div>
                 </td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{meSubCode}</td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{meMaxMarks}</td>
-                <td style={{ ...tdBase, fontSize:'11px' }}>{meMarks}</td>
+                <td style={tdValue}>{meSubCode}</td>
+                <td style={tdValue}>{meMaxMarks}</td>
+                <td style={tdValue}>{meMarks}</td>
               </tr>
 
               {/* Row 3 — Total */}
               <tr>
                 <td colSpan={3} style={{ ...tdBase, fontWeight:'bold', textAlign:'left', paddingLeft:'8px' }}>
                   <div style={{ ...kokila, fontSize:'20px' }}>योग:</div>
-                  <div style={{ ...tahoma, fontSize:'11px' }}>Total:</div>
+                  <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Total:</div>
                 </td>
-                <td style={{ ...tdBase, fontWeight:'bold', fontSize:'11px' }}>{maxMarks}</td>
-                <td style={{ ...tdBase, fontWeight:'bold', fontSize:'11px' }}>{marksTotal}</td>
+                <td style={{ ...tdValue, fontSize:'17px' }}>{maxMarks}</td>
+                <td style={{ ...tdValue, fontSize:'17px' }}>{marksTotal}</td>
               </tr>
             </tbody>
           </table>
 
+          {spacer}
           {/* ══ FOOTER ══ */}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginTop:'44px', marginBottom:'2px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginTop:'16px', marginBottom:'2px' }}>
 
             {/* Left — O.S.D. (Examination) */}
-            <div style={{ textAlign:'center', width:'190px' }}>
+            <div style={{ textAlign:'center', width:'215px' }}>
               <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={controllerSigSrc} alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
+                <img src={authSigSrc} alt="Signature" style={{ height:'48px', objectFit:'contain' }} />
               </div>
               <div style={hrStyle} />
-              <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
-                {certificateData?.controllerSignatureLabel || 'O.S.D. (Examination)'}
-              </div>
-              <div style={{ ...tahoma, fontSize:'11px', marginTop:'1px' }}>Varāhamihira Multidisciplinary Institute</div>
+              <div style={{ ...kokila, fontSize:'16px', marginTop:'3px', lineHeight:1.3 }}>{OSD_HINDI}</div>
+              <div style={{ ...tahoma, fontSize:'12px', fontWeight:'bold', marginTop:'1px' }}>{OSD_ENGLISH}</div>
             </div>
 
             {/* Centre — Date + QR */}
@@ -375,19 +404,21 @@ const CertificateTemplate = ({ certificateData }) => {
               </div>
             </div>
 
-            {/* Right — Verifying Authority */}
-            <div style={{ textAlign:'center', width:'190px' }}>
+            {/* Right — Controller of Examination */}
+            <div style={{ textAlign:'center', width:'215px' }}>
               <div style={{ height:'48px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={authSigSrc} alt="Signature" style={{ height:'48px', objectFit:'contain' }} />
+                <img src={controllerSigSrc} alt="Signature" style={{ height:'40px', objectFit:'contain' }} />
               </div>
               <div style={hrStyle} />
-              <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
-                {certificateData?.authSignatureLabel || 'O.S.D. (Examination)'}
-              </div>
-              <div style={{ ...tahoma, fontSize:'11px', marginTop:'1px', color:'#444' }}>
-                Asiatic Society for Social Science Research
-              </div>
+              <div style={{ ...kokila, fontSize:'16px', marginTop:'3px', lineHeight:1.3 }}>{CONTROLLER_HINDI}</div>
+              <div style={{ ...tahoma, fontSize:'12px', fontWeight:'bold', marginTop:'1px' }}>{CONTROLLER_ENGLISH}</div>
             </div>
+          </div>
+
+          {/* ══ DISCLAIMER (pinned to the bottom of the content area) ══ */}
+          <div style={{ paddingTop:'15px', textAlign:'center', lineHeight:1.3 }}>
+            <div style={{ ...kokila, fontSize:'13px' }}>{DISCLAIMER_HINDI}</div>
+            <div style={{ ...tahoma, fontSize:'10px', fontStyle:'italic' }}>{DISCLAIMER_ENGLISH}</div>
           </div>
 
         </div>{/* end content layer */}

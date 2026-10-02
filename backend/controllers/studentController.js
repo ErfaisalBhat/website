@@ -185,7 +185,7 @@ const generateCertificate = async (req, res) => {
 
     // --- ZOHO PAYMENT LOGIC (ENABLED) ---
     // Change FREE_PERIOD_MINUTES to (180 * 24 * 60) for production (180 days)
-    const FREE_PERIOD_MINUTES = 5;
+    const FREE_PERIOD_MINUTES = 180 * 24 * 60;
     const currentDate = new Date();
     const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
     const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
