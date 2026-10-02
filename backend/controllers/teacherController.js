@@ -126,18 +126,29 @@ const searchByAcademicYear = async (req, res) => {
             part: "$part",
             courseName: "$courseName",
             academicYear: "$academicYear"
-          }
+          },
+          // Track the latest approval/upload time for sorting
+          latestApprovedAt: { $max: "$approvedAt" },
+          latestCreatedAt:  { $max: "$createdAt" }
+        }
+      },
+      {
+        // Sort: most recently declared results first
+        $sort: {
+          latestApprovedAt: -1,
+          latestCreatedAt:  -1
         }
       },
       {
         $project: {
           _id: 0,
-          semester: "$_id.semester",
-          subjectCode: "$_id.subjectCode",
-          examFlag: "$_id.examFlag",
-          part: "$_id.part",
-          courseName: "$_id.courseName",
-          academicYear: "$_id.academicYear"
+          semester:     "$_id.semester",
+          subjectCode:  "$_id.subjectCode",
+          examFlag:     "$_id.examFlag",
+          part:         "$_id.part",
+          courseName:   "$_id.courseName",
+          academicYear: "$_id.academicYear",
+          declaredOn:   { $ifNull: ["$latestApprovedAt", "$latestCreatedAt"] }
         }
       }
     ]);

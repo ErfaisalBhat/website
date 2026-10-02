@@ -34,6 +34,30 @@ const resolveSignatureForCert = async (cert) => {
   };
 };
 
+// ── Date normalizer ───────────────────────────────────────────────────────────
+// Converts any common date format into a canonical YYYYMMDD string so that
+// stored dates (e.g. "18-09-2001" DD-MM-YYYY from CSV) always match what
+// the browser date-picker sends ("2001-09-18" YYYY-MM-DD).
+const normalizeDate = (d) => {
+  if (!d) return '';
+  const str = d.toString().trim();
+
+  // YYYY-MM-DD or YYYY/MM/DD  (browser date input always sends this)
+  const isoMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    return `${isoMatch[1]}${isoMatch[2].padStart(2, '0')}${isoMatch[3].padStart(2, '0')}`;
+  }
+
+  // DD-MM-YYYY or DD/MM/YYYY  (common CSV format)
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    return `${dmyMatch[3]}${dmyMatch[2].padStart(2, '0')}${dmyMatch[1].padStart(2, '0')}`;
+  }
+
+  // Fallback: strip all separators and return as-is
+  return str.replace(/[-/]/g, '');
+};
+
 // Helper to parse "Obt/Max" strings
 const parseMarks = (val) => {
   if (!val || val.toString().trim() === '' || val.toString().trim() === '-') {
@@ -304,14 +328,8 @@ const studentDownload = async (req, res) => {
       return res.status(404).json({ message: 'No diploma certificates found for this Roll Number' });
     }
 
-    const standardizeDate = (d) => {
-      if (!d) return '';
-      const str = d.toString().trim().replace(/[-/]/g, '');
-      return str;
-    };
-
-    const inputDob = standardizeDate(dateOfBirth);
-    const matchedCert = certs.find(c => standardizeDate(c.dateOfBirth) === inputDob);
+    const inputDob = normalizeDate(dateOfBirth);
+    const matchedCert = certs.find(c => normalizeDate(c.dateOfBirth) === inputDob);
 
     if (!matchedCert) {
       return res.status(401).json({ message: 'Invalid Date of Birth' });
@@ -336,13 +354,8 @@ const verifyDiplomaByRollAndDob = async (req, res) => {
       return res.status(404).json({ message: 'No diploma certificate found for this Roll Number' });
     }
 
-    const standardizeDate = (d) => {
-      if (!d) return '';
-      return d.toString().trim().replace(/[-/]/g, '');
-    };
-
-    const inputDob = standardizeDate(dateOfBirth);
-    const cert = certs.find(c => standardizeDate(c.dateOfBirth) === inputDob);
+    const inputDob = normalizeDate(dateOfBirth);
+    const cert = certs.find(c => normalizeDate(c.dateOfBirth) === inputDob);
 
     if (!cert) {
       return res.status(401).json({ message: 'Date of Birth does not match our records' });

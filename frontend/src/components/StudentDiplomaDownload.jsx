@@ -197,12 +197,15 @@ const StudentDiplomaDownload = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date of Birth
+                  Date of Birth <span className="font-normal text-gray-400 text-xs">(DD-MM-YYYY)</span>
                 </label>
                 <input
-                  type="date"
+                  type="text"
+                  placeholder="e.g. 18-09-2001"
                   value={dlForm.dateOfBirth}
                   onChange={e => setDlForm({ ...dlForm, dateOfBirth: e.target.value })}
+                  pattern="\d{2}-\d{2}-\d{4}"
+                  title="Enter date in DD-MM-YYYY format, e.g. 18-09-2001"
                   className="w-full p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   required
                 />

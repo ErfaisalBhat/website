@@ -87,8 +87,17 @@ const CertificateTemplate = ({ certificateData }) => {
     verticalAlign: 'middle',
   };
 
-  /* Fixed-height line box so Hindi + English pieces align the same in the browser and in the downloaded PDF */
-  const piece = { display:'inline-block', height:'28px', lineHeight:'28px', whiteSpace:'nowrap' };
+  /* ── Hindi + English on the same line: align on the shared TEXT BASELINE ──
+     Kokila and Tahoma have different ascent/descent metrics, so centering their
+     boxes makes Hindi look high and English look low. Baseline alignment fixes it. */
+  const lineRow = { display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap' };
+
+  /* Fine-tune knob (px): positive = pushes Hindi DOWN, negative = pushes it UP.
+     Judge this from the downloaded PDF, since html2canvas can shift baselines 1–3px. */
+  const HINDI_NUDGE = '0px';
+
+  const piece = { display: 'inline-block', lineHeight: 1.3, whiteSpace: 'nowrap' };
+  const hindiPiece = { ...piece, ...kokila, position: 'relative', top: HINDI_NUDGE };
 
   const divider = { borderBottom: '1.5px solid #000', margin: '2px 0' };
   const hrStyle = { width: '100%', border: 'none', borderTop: '1.5px solid #333', margin: '3px 0' };
@@ -135,11 +144,11 @@ const CertificateTemplate = ({ certificateData }) => {
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'4px', marginTop:'10px' }}>
             {/* Left: enrolment */}
             <div style={{ width:'195px' }}>
-              <div style={{ ...kokila, fontSize:'13px', lineHeight:1.3 }}>नामांकन संख्या</div>
-              <div style={{ ...tahoma, fontSize:'12px' }}>Enrolment No. {enrolmentNo}</div>
+              <div style={{ ...kokila, fontSize:'14px', lineHeight:1.3 }}>नामांकन संख्या</div>
+              <div style={{ ...tahoma, fontSize:'11px' }}>Enrolment No. {enrolmentNo}</div>
               {certificateNo && (
                 <div style={{ marginTop:'6px', color:'#333' }}>
-                  <div style={{ ...kokila, fontSize:'13px', lineHeight:1.3 }}>प्रमाणपत्र संख्या</div>
+                  <div style={{ ...kokila, fontSize:'14px', lineHeight:1.3 }}>प्रमाणपत्र संख्या</div>
                   <div style={{ ...tahoma, fontSize:'11px' }}>
                     Certificate No.: {displayCertificateNo}
                   </div>
@@ -184,7 +193,7 @@ const CertificateTemplate = ({ certificateData }) => {
           {/* Hindi on top, English below in uppercase to match the PDF */}
           <div style={{ textAlign:'center', lineHeight:1.25, marginBottom:'4px' }}>
             <div style={{ ...kokila, fontSize:'25px' }}>{courseNameHindi} प्रमाणपत्र</div>
-            <div style={{ ...tahoma, fontSize:'20px', letterSpacing:'0.6px', textTransform:'uppercase' }}>
+            <div style={{ ...tahoma, fontSize:'18px', letterSpacing:'0.6px', textTransform:'uppercase' }}>
               {courseNameEnglish}
             </div>
           </div>
@@ -222,24 +231,24 @@ const CertificateTemplate = ({ certificateData }) => {
           </div>
 
           {/* ══ SECTION HEADING ══ */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom:'6px', marginTop:'32px' }}>
-            <span style={{ ...piece, ...kokila, fontSize:'22px' }}>पाठ्यक्रम और अंक विवरण</span>
+          <div style={{ ...lineRow, justifyContent: 'center', marginBottom:'6px', marginTop:'32px' }}>
+            <span style={{ ...hindiPiece, fontSize:'22px' }}>पाठ्यक्रम और अंक विवरण</span>
             <span style={{ ...piece, margin:'0 8px', fontSize:'15px' }}>✱</span>
             <span style={{ ...piece, ...tahoma, fontSize:'15px' }}>Course and Marks Description</span>
           </div>
 
           {/* ══ DURATION & MODE ══ */}
           <div style={{ textAlign: 'left', marginLeft: '22px', marginBottom:'10px' }}>
-            <div style={{ display:'flex', alignItems:'center', marginBottom:'4px' }}>
-              <span style={{ ...piece, ...kokila, fontSize:'22px' }}>पाठ्यक्रम की अवधि</span>
+            <div style={{ ...lineRow, marginBottom:'4px' }}>
+              <span style={{ ...hindiPiece, fontSize:'22px' }}>पाठ्यक्रम की अवधि</span>
               <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / Duration of the Course: </span>
-              <span style={{ ...piece, ...kokila, fontSize:'22px', marginLeft:'15px' }}>{durationHindi}</span>
+              <span style={{ ...hindiPiece, fontSize:'22px', marginLeft:'15px' }}>{durationHindi}</span>
               <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / {durationEnglish}</span>
             </div>
-            <div style={{ display:'flex', alignItems:'center' }}>
-              <span style={{ ...piece, ...kokila, fontSize:'22px' }}>शिक्षण विधि</span>
+            <div style={lineRow}>
+              <span style={{ ...hindiPiece, fontSize:'22px' }}>शिक्षण विधि</span>
               <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / Mode of Teaching: </span>
-              <span style={{ ...piece, ...kokila, fontSize:'22px', marginLeft:'15px' }}>{modeHindi}</span>
+              <span style={{ ...hindiPiece, fontSize:'22px', marginLeft:'15px' }}>{modeHindi}</span>
               <span style={{ ...piece, ...tahoma, fontSize:'15px', whiteSpace:'pre' }}> / {modeEnglish}</span>
             </div>
           </div>
@@ -342,7 +351,7 @@ const CertificateTemplate = ({ certificateData }) => {
               <div style={{ ...tahoma, fontSize:'11px', marginTop:'4px' }}>
                 {certificateData?.controllerSignatureLabel || 'Controller of Examination'}
               </div>
-              <div style={{ ...oldEng, fontSize:'11px', marginTop:'1px' }}>Varāhamihira Multidisciplinary Institute</div>
+              <div style={{ ...tahoma, fontSize:'11px', marginTop:'1px' }}>Varāhamihira Multidisciplinary Institute</div>
             </div>
 
             {/* Centre — Date + QR */}

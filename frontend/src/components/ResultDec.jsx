@@ -3,20 +3,49 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+/**
+ * Returns the current academic year in the format "YYYY-YY" (e.g. "2026-27").
+ * Academic year starts in July (month >= 6 in 0-index = July).
+ */
+const getCurrentAcademicYear = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  // If month is July (6) or later, the academic year is year → (year+1)
+  // Otherwise it is (year-1) → year
+  if (month >= 6) {
+    return `${year}-${String(year + 1).slice(-2)}`;
+  }
+  return `${year - 1}-${String(year).slice(-2)}`;
+};
+
+// Generate all academic year options from 2021-22 up to 5 years in the future
+const generateYearOptions = () => {
+  const options = [];
+  const endYear = new Date().getFullYear() + 5;
+  for (let y = 2021; y <= endYear; y++) {
+    const label = `${y} - ${y + 1}`;
+    const value = `${y}-${String(y + 1).slice(-2)}`;
+    options.push({ value, label });
+  }
+  return options;
+};
+
+const YEAR_OPTIONS = generateYearOptions();
+
 const ResultSearch = () => {
-  const [academicYear, setAcademicYear] = useState("2024-25");
+  const [academicYear, setAcademicYear] = useState(getCurrentAcademicYear());
   const [results, setResults] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     handleSearch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = async (e) => {
-    if (e) {
-      e.preventDefault();
-    }
+    if (e) e.preventDefault();
 
     if (!academicYear) {
       setError("Academic Year is required");
@@ -29,18 +58,14 @@ const ResultSearch = () => {
 
     try {
       const response = await axios({
-        method: 'post',
+        method: "post",
         url: `${API_URL}/api/search/result/search`,
-        data: { 
-          academicYear: academicYear.replace(/-/g, ' - ') // Format: "2023 - 24"
+        data: {
+          academicYear: academicYear.replace(/-/g, " - "), // Format: "2026 - 27"
         },
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { "Content-Type": "application/json" },
       });
-      
-      console.log("API Response:", response.data);
-      
+
       if (response.data && Array.isArray(response.data)) {
         setResults(response.data);
         if (response.data.length === 0) {
@@ -48,11 +73,9 @@ const ResultSearch = () => {
         }
       } else {
         setError("Invalid response format from server");
-        console.error("Invalid response format:", response.data);
       }
     } catch (err) {
-      console.error("Error details:", err);
-      if (err.code === 'ERR_NETWORK') {
+      if (err.code === "ERR_NETWORK") {
         setError("Unable to connect to server. Please check if the server is running.");
       } else if (err.response?.data?.message) {
         setError(err.response.data.message);
@@ -64,38 +87,43 @@ const ResultSearch = () => {
     }
   };
 
+  const formatDate = (iso) => {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
   return (
     <div className="flex flex-col">
       <h2 className="text-2xl font-bold mb-4">Search Results by Academic Year</h2>
 
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full max-w-lg mb-6">
+      <form
+        onSubmit={handleSearch}
+        className="flex flex-col sm:flex-row gap-4 items-center justify-center w-full max-w-lg mb-6"
+      >
         <select
           value={academicYear}
           onChange={(e) => setAcademicYear(e.target.value)}
           className="border border-gray-300 rounded-lg p-2 w-full sm:w-auto focus:outline-none focus:ring focus:ring-blue-300"
           disabled={loading}
         >
-          <option value="2021-22">2021 - 2022</option>
-          <option value="2022-23">2022 - 2023</option>
-          <option value="2023-24">2023 - 2024</option>
-          <option value="2024-25">2024 - 2025</option>
-          <option value="2025-26">2025 - 2026</option>
-          <option value="2026-27">2026 - 2027</option>
-          <option value="2027-28">2027 - 2028</option>
-          <option value="2028-29">2028 - 2029</option>
-          <option value="2029-30">2029 - 2030</option>
-          <option value="2030-31">2030 - 2031</option>
-          <option value="2031-32">2031 - 2032</option>
-          <option value="2032-33">2032 - 2033</option>
+          {YEAR_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
         <button
           type="submit"
           className={`bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300 ${
-            loading ? 'opacity-50 cursor-not-allowed' : ''
+            loading ? "opacity-50 cursor-not-allowed" : ""
           }`}
           disabled={loading}
         >
-          {loading ? 'Searching...' : 'Search'}
+          {loading ? "Searching..." : "Search"}
         </button>
       </form>
 
@@ -106,33 +134,44 @@ const ResultSearch = () => {
       )}
 
       {results.length > 0 && (
-        <table className="table-auto border-collapse border border-gray-300 w-full max-w-4xl text-center">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border border-gray-300 px-4 py-2">Exam Flag</th>
-              <th className="border border-gray-300 px-4 py-2">Subject Code</th>
-              <th className="border border-gray-300 px-4 py-2">Academic Year</th>
-              <th className="border border-gray-300 px-4 py-2">Course Name</th>
-              <th className="border border-gray-300 px-4 py-2">Part</th>
-              <th className="border border-gray-300 px-4 py-2">Semester</th>
-            </tr>
-          </thead>
-          <tbody>
-            {results.map((result, index) => (
-              <tr key={index} className={`${index % 2 === 0 ? "bg-white" : "bg-gray-100"}`}>
-                <td className="border border-gray-300 px-4 py-2">{result.examFlag}</td>
-                <td className="border border-gray-300 px-4 py-2">{result.subjectCode}</td>
-                <td className="border border-gray-300 px-4 py-2">{result.academicYear}</td>
-                <td className="border border-gray-300 px-4 py-2">{result.courseName}</td>
-                <td className="border border-gray-300 px-4 py-2">{result.part}</td>
-                <td className="border border-gray-300 px-4 py-2">{result.semester}</td>
+        <div className="overflow-x-auto">
+          <table className="table-auto border-collapse border border-gray-300 w-full max-w-5xl text-center text-sm">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 px-4 py-2">#</th>
+                <th className="border border-gray-300 px-4 py-2">Exam Flag</th>
+                <th className="border border-gray-300 px-4 py-2">Subject Code</th>
+                <th className="border border-gray-300 px-4 py-2">Academic Year</th>
+                <th className="border border-gray-300 px-4 py-2">Course Name</th>
+                <th className="border border-gray-300 px-4 py-2">Part</th>
+                <th className="border border-gray-300 px-4 py-2">Semester</th>
+                <th className="border border-gray-300 px-4 py-2">Declared On</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {results.map((result, index) => (
+                <tr
+                  key={index}
+                  className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50"} hover:bg-blue-50 transition-colors`}
+                >
+                  <td className="border border-gray-300 px-4 py-2 text-gray-500">{index + 1}</td>
+                  <td className="border border-gray-300 px-4 py-2">{result.examFlag}</td>
+                  <td className="border border-gray-300 px-4 py-2 font-mono">{result.subjectCode}</td>
+                  <td className="border border-gray-300 px-4 py-2">{result.academicYear}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-left">{result.courseName}</td>
+                  <td className="border border-gray-300 px-4 py-2">{result.part}</td>
+                  <td className="border border-gray-300 px-4 py-2">{result.semester}</td>
+                  <td className="border border-gray-300 px-4 py-2 text-gray-600 whitespace-nowrap">
+                    {formatDate(result.declaredOn)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
-      {!error && results.length === 0 && (
+      {!error && results.length === 0 && !loading && (
         <div className="text-gray-500 mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
           No results found for the selected academic year
         </div>
