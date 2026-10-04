@@ -52,15 +52,15 @@ function App() {
           <Route path="/student/diploma" element={<StudentDiplomaDownload />} />
           <Route path="/student/results" element={<Navigate to="/student" replace />} />
 
-          {/* Root "/" — redirect based on subdomain */}
+          {/* Root "/" — render component directly based on subdomain */}
           <Route
             path="/"
             element={
               isAdminDomain
-                ? <Navigate to="/login" replace />
+                ? <LoginForm />
                 : isVerifyDomain
-                ? <Navigate to="/verify" replace />
-                : <Navigate to="/student/login" replace />
+                ? <VerifyCertificate />
+                : <StudentLogin />
             }
           />
 
