@@ -13,10 +13,12 @@ import NotFound from './components/NotFound';
 
 // Detect which subdomain we're on:
 // results.vminstitute.in  → student portal
-// admin.vminstitute.in    → admin/teacher portal
+// resultsadmin.vminstitute.in → admin/teacher portal
+// verifyresults.vminstitute.in → verify portal
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const isStudentDomain = hostname === 'results.vminstitute.in' || hostname === 'localhost';
-const isAdminDomain   = hostname === 'admin.vminstitute.in';
+const isAdminDomain   = hostname === 'resultsadmin.vminstitute.in' || hostname === 'admin.vminstitute.in';
+const isVerifyDomain  = hostname === 'verifyresults.vminstitute.in';
 
 function App() {
   return (
@@ -55,8 +57,10 @@ function App() {
             path="/"
             element={
               isAdminDomain
-                ? <Navigate to="/login" replace />       // admin.vminstitute.in → admin login
-                : <Navigate to="/student/login" replace /> // results.vminstitute.in → student login
+                ? <Navigate to="/login" replace />
+                : isVerifyDomain
+                ? <Navigate to="/verify" replace />
+                : <Navigate to="/student/login" replace />
             }
           />
 
