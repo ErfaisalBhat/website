@@ -1020,6 +1020,7 @@ const AdminDashboard = () => {
                             <>
                               <CloudArrowUpIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                               <p className="text-xs font-medium text-slate-600">Click or drag to upload PNG signature</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Recommended: 85x85px (1:1 square)</p>
                             </>
                           )}
                         </div>
@@ -1928,7 +1929,7 @@ const AdminDashboard = () => {
                               <p className="text-sm text-gray-600">Click or drag to select a PNG signature file</p>
                             </>
                           )}
-                          <p className="text-xs text-gray-400 mt-2">Only transparent background PNG images are recommended</p>
+                          <p className="text-xs text-gray-400 mt-2">Only transparent background PNG images are recommended. Recommended: 85x85px (1:1 square).</p>
                         </div>
                       </div>
 

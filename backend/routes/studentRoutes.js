@@ -12,7 +12,7 @@ const upload = multer({ storage });
 router.post('/verify', verifyStudent);
 
 // Public route for certificate verification by any user
-router.get('/verify/:certificateNo', verifyCertificate);
+router.get('/verify/:certificateNo(*)', verifyCertificate);
 
 // Protected routes - require student token
 router.get('/results', protectStudent, getStudentResults);

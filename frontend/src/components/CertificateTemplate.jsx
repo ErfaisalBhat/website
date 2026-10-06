@@ -359,7 +359,7 @@ const CertificateTemplate = ({ certificateData }) => {
 
               {/* Row 3 — Total */}
               <tr>
-                <td colSpan={3} style={tdBase}>
+                <td colSpan={3} style={{ ...tdBase, textAlign: 'left', paddingLeft: '15px' }}>
                   <div style={{ ...kokila, fontSize:'20px'}}>योग:</div>
                   <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Total:</div>
                 </td>
@@ -375,8 +375,8 @@ const CertificateTemplate = ({ certificateData }) => {
 
             {/* Left — O.S.D. (Examination) */}
             <div style={{ textAlign:'center', width:'215px' }}>
-              <div style={{ height:'70px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={authSigSrc} alt="Signature" style={{ height:'60px', objectFit:'contain' }} />
+              <div style={{ height:'90px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
+                <img src={authSigSrc} alt="Signature" style={{ width:'85px', height:'85px', objectFit:'contain' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{OSD_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{OSD_ENGLISH}</div>
@@ -385,11 +385,12 @@ const CertificateTemplate = ({ certificateData }) => {
             {/* Centre — Date + QR */}
             <div style={{ textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', alignSelf:'flex-end' }}>
               <div style={{
-                background:'#dbeafe', padding:'7px 14px 12px 14px',
+                background:'#dbeafe', padding:'2px 14px 22px 14px',
                 WebkitPrintColorAdjust:'exact', printColorAdjust:'exact',
+                textAlign:'center', whiteSpace:'nowrap'
               }}>
-                <div style={{ ...kokila, fontSize:'18px' }}>दिल्ली, दिनांक {dateOfResultHindi}</div>
-                <div style={{ ...tahoma,  fontSize:'11px'  }}>Delhi, Dated the {dateOfResultEnglish}</div>
+                <div style={{ ...kokila, fontSize:'16px' }}>दिल्ली, दिनांक {dateOfResultHindi}</div>
+                <div style={{ ...tahoma,  fontSize:'10px'  }}>Delhi, Dated the {dateOfResultEnglish}</div>
               </div>
               <div style={{ position: 'relative', top: '12px' }}>
                 <QRCodeSVG
@@ -405,8 +406,8 @@ const CertificateTemplate = ({ certificateData }) => {
 
             {/* Right — Controller of Examination */}
             <div style={{ textAlign:'center', width:'215px' }}>
-              <div style={{ height:'70px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={controllerSigSrc} alt="Signature" style={{ height:'60px', objectFit:'contain' }} />
+              <div style={{ height:'90px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
+                <img src={controllerSigSrc} alt="Signature" style={{ width:'85px', height:'85px', objectFit:'contain' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{CONTROLLER_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{CONTROLLER_ENGLISH}</div>

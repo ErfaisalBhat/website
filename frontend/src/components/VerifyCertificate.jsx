@@ -105,10 +105,10 @@ const VerifyCertificate = () => {
 
   // ── Result colour scheme based on type ───────────────────────────────────
   const isDiploma  = result?.type === 'diploma';
-  const accentBg   = isDiploma ? 'bg-purple-600'  : 'bg-green-500';
-  const borderCol  = isDiploma ? 'border-purple-500' : 'border-green-500';
+  const accentBg   = 'bg-green-500';
+  const borderCol  = 'border-green-500';
   const badge      = isDiploma
-    ? <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-purple-100 text-purple-700">Diploma Certificate</span>
+    ? <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-blue-100 text-blue-700">Diploma Certificate</span>
     : <span className="text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-blue-100 text-blue-700">Degree Certificate</span>;
 
   const d = result?.data;
@@ -243,11 +243,8 @@ const VerifyCertificate = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="w-32 h-40 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400">
-                            <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span className="text-[10px] font-bold uppercase">No Photo</span>
+                          <div className="w-32 h-40 flex flex-col items-center justify-center p-2">
+                            <img src="/VMI%20Logo.png" alt="VMI Logo" className="w-28 h-28 object-contain" />
                           </div>
                         )}
                         <p className="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Verified Identity</p>
@@ -279,7 +276,7 @@ const VerifyCertificate = () => {
                             </p>
                           </div>
                           <div className="pt-2">
-                            <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200">
+                            <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">
                               Status: {d.status}
                             </span>
                           </div>
@@ -290,25 +287,54 @@ const VerifyCertificate = () => {
 
                   {/* ── Diploma result body ── */}
                   {isDiploma && (
-                    <div className="p-8 bg-white space-y-4">
-                      {[
-                        ['Certificate No',  d.certificateNo],
-                        ['Candidate Name',  d.candidateName],
-                        ['Roll Number',     d.rollNo],
-                        ['Programme',       d.programmeName],
-                        ['Course',          d.courseName],
-                        ['Semester',        d.semester],
-                        ['Academic Year',   d.academicYear],
-                        ['Division',        d.division],
-                        ['Issued On',       d.issuedAt
-                          ? new Date(d.issuedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                          : null],
-                      ].filter(([, v]) => v).map(([label, value]) => (
-                        <div key={label} className="flex flex-col sm:flex-row sm:items-center gap-1 py-2 border-b border-gray-100 last:border-0">
-                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide w-44 shrink-0">{label}</span>
-                          <span className="text-gray-800 font-medium">{value}</span>
+                    <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8 bg-white">
+                      <div className="md:col-span-1 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 pb-8 md:pb-0">
+                        <div className="w-32 h-40 flex flex-col items-center justify-center p-2">
+                          <img src="/VMI%20Logo.png" alt="VMI Logo" className="w-28 h-28 object-contain" />
                         </div>
-                      ))}
+                        <p className="mt-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Verified Identity</p>
+                      </div>
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Candidate Name</label>
+                            <p className="text-xl font-bold text-gray-800">{d.candidateName}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Roll Number</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.rollNo}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Programme & Course</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.programmeName} - {d.courseName}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Division</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.division}</p>
+                          </div>
+                        </div>
+                        <div className="space-y-6">
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Certificate No</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.certificateNo}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Academic Year (Sem)</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.academicYear} ({d.semester})</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
+                            <p className="text-lg font-semibold text-gray-700">
+                              {d.issuedAt && new Date(d.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                          <div className="pt-2">
+                            <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-bold border whitespace-nowrap ${d.isValid === 'Valid ✓' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
+                              Status: Verified ({d.isValid || 'Valid ✓'})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 

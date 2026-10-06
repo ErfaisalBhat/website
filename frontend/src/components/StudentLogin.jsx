@@ -269,7 +269,7 @@ const StudentLogin = () => {
                   Examination Results
                 </h1>
                 <p className="text-lg text-gray-700">
-                  Statement of Marks / Score Card &amp; Diploma Certificate
+                  Statement of Marks
                 </p>
               </div>
             </div>
@@ -344,7 +344,7 @@ const StudentLogin = () => {
                     className={`w-full py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md
                       transition duration-150 ease-in-out ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {loading ? 'Searching...' : 'View Results / Download Certificate'}
+                    {loading ? 'Searching...' : 'View Results'}
                   </button>
                 </form>
               </div>

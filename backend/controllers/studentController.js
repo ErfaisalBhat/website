@@ -475,21 +475,7 @@ const verifyCertificate = async (req, res) => {
     let result = await Result.findOne(query).populate('student', 'profileImageId');
 
     if (!result) {
-      const DiplomaCertificate = require('../models/DiplomaCertificate');
-      const diploma = await DiplomaCertificate.findOne({ certificateNo });
-      if (!diploma) {
-        return res.status(404).json({ message: 'Invalid certificate number' });
-      }
-      return res.json({
-        studentName: diploma.candidateName,
-        rollNo: diploma.rollNo,
-        enrolmentNo: diploma.marksData?.enrolmentNo || 'N/A',
-        subject: diploma.courseName,
-        courseName: diploma.courseName,
-        issuedAt: diploma.issuedAt,
-        status: 'Verified (Diploma)',
-        profileImageId: null
-      });
+      return res.status(404).json({ message: 'Invalid certificate number' });
     }
 
     res.json({
