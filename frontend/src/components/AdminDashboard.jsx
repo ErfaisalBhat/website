@@ -76,13 +76,13 @@ const AdminDashboard = () => {
   const [activeResultUploadTab, setActiveResultUploadTab] = useState('upload_records');
   const [activeCertSignatures, setActiveCertSignatures] = useState([]);
   const [certSignatureFile, setCertSignatureFile] = useState(null);
-  const [certSignatureRole, setCertSignatureRole] = useState('Verifying Authority');
-  const [authLabelInput, setAuthLabelInput] = useState('Verifying Authority');
-  const [controllerLabelInput, setControllerLabelInput] = useState('O.S.D. (Examination)');
+  const [certSignatureRole, setCertSignatureRole] = useState('O.S.D. (Examination)');
+  const [authLabelInput, setAuthLabelInput] = useState('O.S.D. (Examination)');
+  const [controllerLabelInput, setControllerLabelInput] = useState('Controller of Examination');
 
   const [activeSignature, setActiveSignature] = useState(null);
   const [signatureFile, setSignatureFile] = useState(null);
-  const [signatoryLabel, setSignatoryLabel] = useState('O.S.D. (Examination)');
+  const [signatoryLabel, setSignatoryLabel] = useState('Controller of Examination');
 
   useEffect(() => {
     fetchTeachers();
@@ -222,7 +222,7 @@ const AdminDashboard = () => {
     const formData = new FormData();
     formData.append('file', certSignatureFile);
     formData.append('role', certSignatureRole);
-    const labelToSend = certSignatureRole === 'Verifying Authority' ? authLabelInput : controllerLabelInput;
+    const labelToSend = certSignatureRole === 'O.S.D. (Examination)' ? authLabelInput : controllerLabelInput;
     if (labelToSend.trim()) {
       formData.append('signatoryLabel', labelToSend.trim());
     }
@@ -243,6 +243,29 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       toast.error('Error uploading signature');
+    }
+  };
+
+  const handleResetSignatureSnapshots = async () => {
+    if (!window.confirm(
+      'This will update ALL existing certificates to use the currently active OSD and Controller signatures.\n\nProceed?'
+    )) return;
+    const loading = toast.loading('Resetting signature snapshots...');
+    try {
+      const res = await fetch(`${API_URL}/api/admin/reset-signature-snapshots`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      const data = await res.json();
+      toast.dismiss(loading);
+      if (res.ok) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message || 'Reset failed');
+      }
+    } catch (err) {
+      toast.dismiss(loading);
+      toast.error('Error resetting snapshots');
     }
   };
 
@@ -914,7 +937,7 @@ const AdminDashboard = () => {
                 {activeResultUploadTab === 'upload_signature' && (
                   <div className="w-full">
                     <h2 className="text-xl font-semibold tracking-tight text-slate-900 mb-1">Certificate Signature</h2>
-                    <p className="text-xs text-slate-500 mb-5">Manage the signature rendered on regular certificates (Verifying Authority & Controller of Exam).</p>
+                    <p className="text-xs text-slate-500 mb-5">Manage the signature rendered on regular certificates (O.S.D. (Examination) & Controller of Examination).</p>
 
                     {/* Active Signatures List */}
                     <div className="mb-6 p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
@@ -932,7 +955,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="flex items-center justify-between gap-2 mt-2">
                                 <span className="bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
-                                  {sig.role === 'Controller of Examination' ? 'O.S.D. (Examination)' : sig.role}
+                                  {sig.signatoryLabel || sig.role}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <p className="text-[10px] text-slate-400 font-medium">Uploaded: {new Date(sig.uploadedAt).toLocaleDateString()}</p>
@@ -955,28 +978,11 @@ const AdminDashboard = () => {
                       )}
                     </div>
 
+
                     <form onSubmit={handleCertSignatureUploadSubmit} className="space-y-4">
                       <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">Select Signature Role</label>
                         <div className="flex gap-3">
-                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'Verifying Authority' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
-                            <input 
-                              type="radio" 
-                              name="signatureRole" 
-                              value="Verifying Authority" 
-                              checked={certSignatureRole === 'Verifying Authority'} 
-                              onChange={(e) => setCertSignatureRole(e.target.value)} 
-                              className="sr-only"
-                            />
-                            <input 
-                              type="text"
-                              value={authLabelInput}
-                              onChange={(e) => setAuthLabelInput(e.target.value)}
-                              onClick={(e) => setCertSignatureRole('Verifying Authority')}
-                              placeholder="Verifying Authority"
-                              className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
-                            />
-                          </label>
                           <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'O.S.D. (Examination)' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
                             <input 
                               type="radio" 
@@ -988,10 +994,28 @@ const AdminDashboard = () => {
                             />
                             <input 
                               type="text"
-                              value={controllerLabelInput}
-                              onChange={(e) => setControllerLabelInput(e.target.value)}
+                              value={authLabelInput}
+                              onChange={(e) => setAuthLabelInput(e.target.value)}
                               onClick={(e) => setCertSignatureRole('O.S.D. (Examination)')}
                               placeholder="O.S.D. (Examination)"
+                              className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
+                            />
+                          </label>
+                          <label className={`flex-1 border p-3 rounded-lg cursor-pointer transition-all ${certSignatureRole === 'Controller of Examination' ? 'border-slate-800 bg-slate-50 ring-1 ring-slate-800' : 'border-slate-300 hover:border-slate-400 bg-white'}`}>
+                            <input 
+                              type="radio" 
+                              name="signatureRole" 
+                              value="Controller of Examination" 
+                              checked={certSignatureRole === 'Controller of Examination'} 
+                              onChange={(e) => setCertSignatureRole(e.target.value)} 
+                              className="sr-only"
+                            />
+                            <input 
+                              type="text"
+                              value={controllerLabelInput}
+                              onChange={(e) => setControllerLabelInput(e.target.value)}
+                              onClick={(e) => setCertSignatureRole('Controller of Examination')}
+                              placeholder="Controller of Examination"
                               className="font-semibold text-sm text-slate-900 bg-transparent outline-none w-full border-b border-transparent focus:border-slate-400 transition-colors placeholder:text-slate-400"
                             />
                           </label>
@@ -2059,7 +2083,11 @@ const AdminDashboard = () => {
                           <div className="flex flex-col items-center gap-1">
                             {r.student?.profileImageId ? (
                               <img 
-                                src={`${API_URL}/api/admin/student-photo/${r.student._id}`} 
+                                src={
+                                  r.student.profileImageId.startsWith('http') || r.student.profileImageId.startsWith('data:')
+                                    ? r.student.profileImageId
+                                    : `${API_URL}/uploads/${r.student.profileImageId}`
+                                }
                                 alt="Student" 
                                 className="w-8 h-8 rounded-full object-cover border"
                               />

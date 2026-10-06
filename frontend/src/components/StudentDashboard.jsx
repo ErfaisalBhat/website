@@ -17,9 +17,9 @@ const StudentDashboard = () => {
   const [selectedResult, setSelectedResult] = useState(null);
   const [showDeclaredResults, setShowDeclaredResults] = useState(false);
   const [showPaymentPopup, setShowPaymentPopup] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState('');
   const [paymentMessage, setPaymentMessage] = useState('');
   const [pendingPaymentResultId, setPendingPaymentResultId] = useState(null);
+  const [toast, setToast] = useState(null); // { message, type: 'success'|'info'|'error' }
   const navigate = useNavigate();
   const certificateRef = useRef();
 
@@ -39,15 +39,25 @@ const StudentDashboard = () => {
     const opt = {
       margin: 0,
       filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { scale: 3, useCORS: true, allowTaint: true, scrollY: 0, scrollX: 0 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      image: { type: 'jpeg', quality: 0.72 },
+      html2canvas: {
+        scale: 4,
+        useCORS: true,
+        allowTaint: true,
+        scrollY: 0,
+        scrollX: 0,
+        letterRendering: true,
+        imageTimeout: 0,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true }
     };
 
     try {
       // 1. Generate PDF blob ONLY ONCE
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
-      
+
       // 2. Download to user's device IMMEDIATELY
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
@@ -58,36 +68,52 @@ const StudentDashboard = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      // 3. Upload to Drive via Backend in the background (fire and forget)
-      const token = localStorage.getItem('studentToken');
-      const formData = new FormData();
-      formData.append('file', pdfBlob, opt.filename);
-      formData.append('rollNo', selectedResult?.rollNo);
-      formData.append('type', 'certificate');
-      formData.append('resultId', selectedResult?._id || '');
-      formData.append('certificateNo', selectedResult?.certificateNo || '');
+      // 3. Upload to Drive — ONLY if not already saved for this result
+      //    Rule: same rollNo + same course (same resultId) → saved ONCE
+      //          same rollNo + different course             → saved separately
+      const alreadySaved = !!selectedResult?.certificateDriveLatestHash;
+      if (alreadySaved) {
+        console.log('[Drive] Already saved for this result, skipping upload.');
+      } else {
+        const token = localStorage.getItem('studentToken');
+        const formData = new FormData();
+        formData.append('file', pdfBlob, opt.filename);
+        formData.append('rollNo', selectedResult?.rollNo);
+        formData.append('type', 'certificate');
+        formData.append('resultId', selectedResult?._id || '');
+        formData.append('certificateNo', selectedResult?.certificateNo || '');
 
-      fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      }).then(async res => {
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error("Drive upload failed:", res.status, errorText);
-        }
-      }).catch(err => {
-        console.error("Drive upload network error:", err);
-      });
+        fetch(`${API_URL}/api/student/save-certificate-to-drive`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('studentToken')}` },
+          body: formData
+        }).then(async res => {
+          if (res.ok) {
+            // Mark locally so subsequent downloads in the same session are skipped too
+            setResults(prev => prev.map(r =>
+              r._id === selectedResult._id
+                ? { ...r, certificateDriveLatestHash: 'saved' }
+                : r
+            ));
+            setSelectedResult(prev => ({ ...prev, certificateDriveLatestHash: 'saved' }));
+          } else {
+            const errorText = await res.text();
+            console.error('Drive upload failed:', res.status, errorText);
+          }
+        }).catch(err => {
+          console.error('Drive upload network error:', err);
+        });
+      }
 
     } catch (err) {
-      console.error("PDF Gen Error:", err);
-      alert("Failed to generate PDF. Please try again.");
+      console.error('PDF Gen Error:', err);
+      alert('Failed to generate PDF. Please try again.');
     } finally {
       setIsSavingPDF(false);
       isSavingRef.current = false;
     }
   };
+
 
   useEffect(() => {
     const token = localStorage.getItem('studentToken');
@@ -104,12 +130,18 @@ const StudentDashboard = () => {
       // We rely on the Zoho Webhook to confirm the payment securely on the server.
       // Fetch results immediately, but it might take a few seconds for the webhook to process.
       fetchResults(token).then(() => {
-        alert("Welcome back! If your payment was successful, your certificate will unlock shortly once we receive confirmation from the payment gateway.");
+        showToast('Welcome back! If you completed the payment, your certificate will unlock shortly. Please try downloading again.', 'info');
       });
     } else {
       fetchResults(token);
     }
   }, [navigate, student, updateStudent]);
+
+  // Auto-dismissing toast helper
+  const showToast = (message, type = 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 6000);
+  };
 
   const fetchResults = async (token) => {
     try {
@@ -135,13 +167,28 @@ const StudentDashboard = () => {
       if (response.status === 401) { logoutStudent(); navigate('/student/login'); return; }
       if (response.ok) {
         const data = await response.json();
-        setSelectedResult(data);
+        // Merge cert data with the original result record so that _id,
+        // certificateDriveLatestHash etc. are available for the Drive upload guard
+        const originalResult = results.find(r => r._id === resultId);
+        setSelectedResult({
+          ...(originalResult || {}),
+          ...data,
+          _id: resultId,  // always keep the real resultId
+        });
       } else if (response.status === 403) {
         const data = await response.json();
-        if (data.paymentUrl) {
-          // Show the payment popup instead of redirecting immediately
-          setPaymentUrl(data.paymentUrl);
-          setPaymentMessage(data.message || "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.");
+        if (data.requiresPayment || data.paymentUrl || data.message?.includes('fee')) {
+          // Immediately mark payment as initiated on backend so webhook can match this result
+          try {
+            const token2 = localStorage.getItem('studentToken');
+            await fetch(`${API_URL}/api/student/initiate-payment`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token2}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ resultId })
+            });
+          } catch (e) { console.error('Failed to initiate payment:', e); }
+          localStorage.setItem('pendingPaymentResultId', resultId);
+          setPaymentMessage(data.message || "A miscellaneous fee of ₹1500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.");
           setPendingPaymentResultId(resultId);
           setShowPaymentPopup(true);
         } else {
@@ -458,32 +505,17 @@ const StudentDashboard = () => {
             <h3 className="text-lg font-bold text-gray-900 mb-2">Payment Required</h3>
             <p className="text-sm text-gray-500 mb-6">{paymentMessage}</p>
             <div className="flex gap-3 justify-center">
-              <button 
+              <button
                 onClick={() => setShowPaymentPopup(false)}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium text-sm"
               >
                 Cancel
               </button>
-              <button 
-                onClick={async () => {
-                  try {
-                    const token = localStorage.getItem('studentToken');
-                    // Tell backend this student is about to pay — records which result to unlock
-                    await fetch(`${API_URL}/api/student/initiate-payment`, {
-                      method: 'POST',
-                      headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({ resultId: pendingPaymentResultId })
-                    });
-                  } catch (e) {
-                    console.error('Failed to initiate payment:', e);
-                  }
-                  // Save result ID so we can confirm payment when student returns
-                  localStorage.setItem('pendingPaymentResultId', pendingPaymentResultId);
-                  // Redirect to Zoho payment page
-                  window.location.href = paymentUrl;
+              <button
+                onClick={() => {
+                  // Open Zoho payment in a new tab
+                  window.open('https://zohosecurepay.in/checkout/fnh3kn7z-cgd9qc5qmabi4/Payment-For-Certificate', '_blank');
+                  setShowPaymentPopup(false);
                 }}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm flex items-center gap-2"
               >
@@ -504,7 +536,44 @@ const StudentDashboard = () => {
           </p>
         </div>
       </footer>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] flex items-start gap-3 px-5 py-4 rounded-xl shadow-2xl max-w-sm w-full border transition-all duration-300
+          ${toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : ''}
+          ${toast.type === 'info'    ? 'bg-blue-50 border-blue-200 text-blue-800'    : ''}
+          ${toast.type === 'error'   ? 'bg-red-50 border-red-200 text-red-800'       : ''}
+        `}>
+          {/* Icon */}
+          <div className="shrink-0 mt-0.5">
+            {toast.type === 'success' && (
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+            {toast.type === 'info' && (
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+            {toast.type === 'error' && (
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+          </div>
+          {/* Message */}
+          <p className="text-sm font-medium flex-1">{toast.message}</p>
+          {/* Close */}
+          <button onClick={() => setToast(null)} className="shrink-0 opacity-60 hover:opacity-100 transition-opacity">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
+
   );
 };
 
