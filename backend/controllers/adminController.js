@@ -3,6 +3,7 @@ const Result = require('../models/Result');
 const FileUpload = require('../models/FileUpload');
 const CertificateSignature = require('../models/CertificateSignature');
 const { processCSV, processExcel } = require('../utils/fileParser');
+const mailSender = require('../utils/mailSender');
 const mongoose = require('mongoose');
 const { uploadFileToDrive, deleteFileFromDrive } = require('../utils/googleDriveUploader');
 
@@ -386,6 +387,28 @@ const changeTeacherPassword = async (req, res) => {
 
     user.password = newPassword; // Hashing handled by pre-save hook
     await user.save();
+
+    const message = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; background-color: #f4f4f4;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+    <div style="background-color: #4CAF50; color: #fff; padding: 15px; text-align: center; font-size: 20px; font-weight: bold;">
+      Your Login Credentials Updated
+    </div>
+    <div style="padding: 20px;">
+      <p style="font-size: 16px; margin: 0;">Dear <strong>${user.name}</strong>,</p>
+      <p style="font-size: 16px; margin: 15px 0 0;">Your password for the Result Management System Portal has been updated by the Admin.</p>
+      <div style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; margin: 15px 0; font-size: 16px;">
+        <p style="margin: 0;"><strong>Email ID:</strong> ${user.email}</p>
+        <p style="margin: 0;"><strong>New Password:</strong> ${newPassword}</p>
+      </div>
+      <p style="font-size: 16px; color: #555; margin: 0;">
+        <strong>Important:</strong> Please ensure you keep this information confidential and do not share it with anyone.
+      </p>
+    </div>
+  </div>
+</div>`;
+
+    // Send email in the background without making the admin wait
+    mailSender(user.email, "Password Updated", message).catch(err => console.log('Mail error:', err));
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {
