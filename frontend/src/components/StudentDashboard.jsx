@@ -118,7 +118,7 @@ const StudentDashboard = () => {
   useEffect(() => {
     const token = localStorage.getItem('studentToken');
     const storedStudentInfo = localStorage.getItem('studentInfo');
-    if (!token) { navigate('/student/login'); return; }
+    if (!token) { navigate('/'); return; }
     if (!student?.name && storedStudentInfo) {
       updateStudent(JSON.parse(storedStudentInfo));
     }
@@ -148,7 +148,7 @@ const StudentDashboard = () => {
       const response = await fetch(`${API_URL}/api/student/results`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
-      if (response.status === 401) { logoutStudent(); navigate('/student/login'); return; }
+      if (response.status === 401) { logoutStudent(); navigate('/'); return; }
       const data = await response.json();
       if (response.ok) { setResults(data); } else { setError(data.message); }
     } catch (error) {
@@ -164,7 +164,7 @@ const StudentDashboard = () => {
       const response = await fetch(`${API_URL}/api/student/certificate/${resultId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.status === 401) { logoutStudent(); navigate('/student/login'); return; }
+      if (response.status === 401) { logoutStudent(); navigate('/'); return; }
       if (response.ok) {
         const data = await response.json();
         // Merge cert data with the original result record so that _id,
@@ -202,7 +202,7 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleLogout = () => { logoutStudent(); navigate('/student/login'); };
+  const handleLogout = () => { logoutStudent(); navigate('/'); };
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -332,31 +332,54 @@ const StudentDashboard = () => {
             </div>
 
             {results.some(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())) && (() => {
-              // Must match backend FREE_PERIOD_MINUTES — change to (180 * 24 * 60) for production
-              const FREE_PERIOD_MINUTES = 5;
-
-              const getDownloadStatus = (result) => {
-                if (!result.firstDownloadedAt) return { status: 'free', label: 'Free downloads available' };
-                const now = new Date();
-
-                if (result.paymentStatus === 'paid' && result.lastPaidAt) {
-                  const paidElapsed = Math.floor(Math.abs(now - new Date(result.lastPaidAt)) / (1000 * 60));
-                  const remaining = FREE_PERIOD_MINUTES - paidElapsed;
+              // Must match backend FREE_PERIOD_DAYS
+                const FREE_PERIOD_MINUTES = 180 * 24 * 60;
+  
+                const parseResultDate = (dateStr, fallback) => {
+                  let d = null;
+                  if (dateStr) {
+                    let str = String(dateStr).trim();
+                    if (/^\d{5}$/.test(str)) {
+                      d = new Date(Math.round((parseInt(str, 10) - 25569) * 86400 * 1000));
+                    } else {
+                      const parts = str.split(/[-/]/);
+                      if (parts.length === 3) {
+                        d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+                      } else {
+                        str = str.replace(/(\d+)(st|nd|rd|th)/, '$1');
+                        d = new Date(str);
+                      }
+                    }
+                  }
+                  if (isNaN(d?.getTime())) {
+                    d = fallback;
+                  }
+                  return d;
+                };
+                
+                const getDownloadStatus = (result) => {
+                  const now = new Date();
+                  const fallback = result.createdAt ? new Date(result.createdAt) : now;
+                  const resultDate = parseResultDate(result.dateOfResultEnglish, fallback);
+  
+                  if (result.paymentStatus === 'paid' && result.lastPaidAt) {
+                    const paidElapsed = Math.floor((now - new Date(result.lastPaidAt)) / (1000 * 60));
+                    const remaining = FREE_PERIOD_MINUTES - Math.max(0, paidElapsed);
+                    if (remaining > 0) {
+                      return { status: 'paid', remaining, transactionId: result.transactionId };
+                    }
+                    return { status: 'expired' };
+                  }
+  
+                  const freeElapsed = Math.floor((now - resultDate) / (1000 * 60));
+                  const remaining = FREE_PERIOD_MINUTES - Math.max(0, freeElapsed);
                   if (remaining > 0) {
-                    return { status: 'paid', remaining, transactionId: result.transactionId };
+                    return { status: 'free', remaining };
                   }
                   return { status: 'expired' };
-                }
-
-                const freeElapsed = Math.floor(Math.abs(now - new Date(result.firstDownloadedAt)) / (1000 * 60));
-                const remaining = FREE_PERIOD_MINUTES - freeElapsed;
-                if (remaining > 0) {
-                  return { status: 'free', remaining };
-                }
-                return { status: 'expired' };
-              };
-
-              const formatRemaining = (minutes) => {
+                };
+  
+                const formatRemaining = (minutes) => {
                 if (minutes >= 1440) {
                   const days = Math.floor(minutes / 1440);
                   return `${days} day${days !== 1 ? 's' : ''} remaining`;
@@ -378,7 +401,7 @@ const StudentDashboard = () => {
                     Available Certificates
                   </h3>
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-6 grid grid-cols-1 xl:grid-cols-2 gap-4">
                   {results.filter(r => !failedStatuses.includes(r.resultRemarkEnglish?.toLowerCase().trim())).map((result) => {
                     const dlStatus = getDownloadStatus(result);
                     return (
@@ -398,8 +421,10 @@ const StudentDashboard = () => {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mb-3">
-                            {result.issuedAt ? `Issued: ${new Date(result.issuedAt).toLocaleDateString()}` : `Result Date: ${result.dateOfResultEnglish}`}
+                          <p className="text-[11px] sm:text-[11.5px] text-gray-500 mb-3 leading-relaxed">
+                            {result.paymentStatus === 'paid' && result.lastPaidAt
+                              ? `Certificate available for download for 180 days from payment date ${new Date(result.lastPaidAt).toLocaleDateString('en-GB')}.`
+                              : `Certificate available for download for 180 days from date of result ${parseResultDate(result.dateOfResultEnglish, result.createdAt ? new Date(result.createdAt) : new Date()).toLocaleDateString('en-GB')}.`}
                           </p>
                         </div>
                           <button onClick={() => handleDownloadCertificate(result._id)}

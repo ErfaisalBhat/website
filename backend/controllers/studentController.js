@@ -184,41 +184,47 @@ const generateCertificate = async (req, res) => {
     }
 
     // --- ZOHO PAYMENT LOGIC (ENABLED) ---
-    // Change FREE_PERIOD_MINUTES to (180 * 24 * 60) for production (180 days)
-    const FREE_PERIOD_MINUTES = 5; // TEST: 5 minutes — change to (180 * 24 * 60) for production
-    const currentDate = new Date();
-    const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
-    const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
+      const FREE_PERIOD_DAYS = 180;
+      const currentDate = new Date();
+      const zohoCheckoutBaseUrl = "https://zohosecurepay.in/checkout/9sdqjs08-yj6kfy0fx7l46/TESTFORCERT";
+      const finalPaymentUrl = `${zohoCheckoutBaseUrl}?Result_ID=${result._id}`;
 
-    if (!result.firstDownloadedAt) {
-      // First ever download — start the free period
-      result.firstDownloadedAt = currentDate;
-      await result.save();
-    } else {
-      const diffTime = Math.abs(currentDate - result.firstDownloadedAt);
-      const diffMinutes = Math.floor(diffTime / (1000 * 60));
-
-      if (diffMinutes >= FREE_PERIOD_MINUTES) {
-        if (result.paymentStatus === 'paid' && result.lastPaidAt) {
-          // Student has paid — check if the paid period has also expired
-          const paidDiff = Math.abs(currentDate - result.lastPaidAt);
-          const paidDiffMinutes = Math.floor(paidDiff / (1000 * 60));
-
-          if (paidDiffMinutes >= FREE_PERIOD_MINUTES) {
-            // Paid period expired — reset for a new cycle, must pay again
-            result.paymentStatus = 'unpaid';
-            result.transactionId = null;
-            await result.save();
-
-            return res.status(403).json({
-              success: false,
-              message: "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.",
-              paymentUrl: finalPaymentUrl
-            });
-          }
-          // else: still within paid period — allow download
+            let resultDate = null;
+      if (result.dateOfResultEnglish) {
+        let str = String(result.dateOfResultEnglish).trim();
+        if (/^\d{5}$/.test(str)) {
+          resultDate = new Date(Math.round((parseInt(str, 10) - 25569) * 86400 * 1000));
         } else {
-          // Free period expired and not paid — block
+          const parts = str.split(/[-/]/);
+          if (parts.length === 3) {
+            resultDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+          } else {
+            str = str.replace(/(\d+)(st|nd|rd|th)/, '$1');
+            resultDate = new Date(str);
+          }
+        }
+      }
+      if (isNaN(resultDate?.getTime())) {
+        resultDate = result.createdAt || currentDate;
+      }
+
+      if (result.paymentStatus === 'paid' && result.lastPaidAt) {
+        const paidDiffDays = Math.floor((currentDate - result.lastPaidAt) / (1000 * 60 * 60 * 24));
+        if (paidDiffDays >= FREE_PERIOD_DAYS) {
+          result.paymentStatus = 'unpaid';
+          result.transactionId = null;
+          await result.save();
+
+          return res.status(403).json({
+            success: false,
+            message: "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days.",
+            paymentUrl: finalPaymentUrl
+          });
+        }
+      } else {
+        // Prevent negative diff days if currentDate is before resultDate (e.g. testing)
+        const freeDiffDays = Math.floor((currentDate - resultDate) / (1000 * 60 * 60 * 24));
+        if (freeDiffDays >= FREE_PERIOD_DAYS) {
           return res.status(403).json({
             success: false,
             message: "A miscellaneous fee of \u20B91500/- has to be paid to Reissue of e-Certificate after 180 days of declaration of result.",
@@ -226,9 +232,7 @@ const generateCertificate = async (req, res) => {
           });
         }
       }
-      // else: still within free period — allow download
-    }
-    // --- END ZOHO PAYMENT LOGIC ---
+      // --- END ZOHO PAYMENT LOGIC ---
 
     if (!result.certificateNo) {
       // Generate sequence number based on year
@@ -531,3 +535,4 @@ module.exports = {
   verifyCertificate,
   initiatePayment
 };
+

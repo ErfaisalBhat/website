@@ -19,7 +19,7 @@ const LoginForm = () => {
       // Redirect based on role
       switch (result.user.role) {
         case 'admin':
-          navigate('/admin');
+          navigate('/');
           break;
         case 'teacher':
           navigate('/teacher');
@@ -130,12 +130,12 @@ const LoginForm = () => {
           <div className="mt-4 text-center space-y-3">
             <div>
               <p className="text-gray-600 text-sm">Are you a student?</p>
-              <Link 
-                to="/student/login" 
+              <a 
+                href="https://results.vminstitute.in/" 
                 className="text-indigo-600 hover:text-indigo-500 font-medium text-sm transition-colors duration-150"
               >
                 Click here to view your results
-              </Link>
+              </a>
             </div>
             </div>
             </div>

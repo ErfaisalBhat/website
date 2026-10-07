@@ -56,6 +56,22 @@ const CertificateTemplate = ({ certificateData }) => {
     }
     return certNo;
   };
+  
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    let str = String(dateStr).trim();
+    if (/^\d{5}$/.test(str)) {
+      const d = new Date(Math.round((parseInt(str, 10) - 25569) * 86400 * 1000));
+      if (!isNaN(d.getTime())) {
+         const day = String(d.getDate()).padStart(2, '0');
+         const month = String(d.getMonth() + 1).padStart(2, '0');
+         const year = d.getFullYear();
+         return `${day}/${month}/${year}`;
+      }
+    }
+    return str;
+  };
+
   const displayCertificateNo = formatCertNo(certificateNo, rollNo);
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
@@ -389,8 +405,8 @@ const CertificateTemplate = ({ certificateData }) => {
                 WebkitPrintColorAdjust:'exact', printColorAdjust:'exact',
                 textAlign:'center', whiteSpace:'nowrap'
               }}>
-                <div style={{ ...kokila, fontSize:'16px' }}>दिल्ली, दिनांक {dateOfResultHindi}</div>
-                <div style={{ ...tahoma,  fontSize:'10px'  }}>Delhi, Dated the {dateOfResultEnglish}</div>
+                <div style={{ ...kokila, fontSize:'16px' }}>दिल्ली, दिनांक {formatDisplayDate(dateOfResultHindi)}</div>
+                <div style={{ ...tahoma,  fontSize:'10px'  }}>Delhi, Dated the {formatDisplayDate(dateOfResultEnglish)}</div>
               </div>
               <div style={{ position: 'relative', top: '12px' }}>
                 <QRCodeSVG
