@@ -19,7 +19,11 @@ const LoginForm = () => {
       // Redirect based on role
       switch (result.user.role) {
         case 'admin':
-          navigate('/');
+          if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            navigate('/admin');
+          } else {
+            navigate('/');
+          }
           break;
         case 'teacher':
           navigate('/teacher');
