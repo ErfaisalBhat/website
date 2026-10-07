@@ -68,7 +68,7 @@ const CertificateTemplate = ({ certificateData }) => {
          const day = String(d.getDate()).padStart(2, '0');
          const monthName = months[d.getMonth()];
          const year = d.getFullYear();
-         return `${day}-${monthName}-${year}`;
+         return `${day} ${monthName} ${year}`;
       }
     }
     
@@ -78,11 +78,11 @@ const CertificateTemplate = ({ certificateData }) => {
       let monthIndex = parseInt(parts[1], 10) - 1;
       let year = parts[2];
       if (monthIndex >= 0 && monthIndex < 12) {
-        return `${day}-${months[monthIndex]}-${year}`;
+        return `${day} ${months[monthIndex]} ${year}`;
       }
     }
 
-    return str.replace(/\//g, '-');
+    return str.replace(/[\/-]/g, ' ');
   };
 
   const displayCertificateNo = formatCertNo(certificateNo, rollNo);
@@ -419,7 +419,7 @@ const CertificateTemplate = ({ certificateData }) => {
                 textAlign:'center', whiteSpace:'nowrap'
               }}>
                 <div style={{ ...kokila, fontSize:'16px' }}>दिल्ली, दिनांक {formatDisplayDate(dateOfResultHindi)}</div>
-                <div style={{ ...tahoma,  fontSize:'10px'  }}>Delhi, Dated the {formatDisplayDate(dateOfResultEnglish)}</div>
+                <div style={{ ...tahoma,  fontSize:'10px'  }}>Delhi, Dated {formatDisplayDate(dateOfResultEnglish)}</div>
               </div>
               <div style={{ position: 'relative', top: '12px' }}>
                 <QRCodeSVG
