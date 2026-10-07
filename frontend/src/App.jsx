@@ -62,15 +62,36 @@ function App() {
     );
   }
 
-  // Default to Student Domain
+  // Default to Student Domain and Localhost Catch-all
   return (
     <AuthProvider>
       <Toaster position="top-right" />
       <Router>
         <Routes>
+          {/* Student Routes */}
           <Route path="/" element={<StudentLogin />} />
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/diploma" element={<StudentDiplomaDownload />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/login" element={<LoginForm />} />
+          
+          {/* Teacher Routes */}
+          <Route path="/teacher" element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Verify Routes */}
+          <Route path="/verify" element={<VerifyCertificate />} />
+
+          {/* Catch All */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
