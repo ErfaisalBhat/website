@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Header from './Header';
-import DiplomaCertificateTemplate from './DiplomaCertificateTemplate';
+
 import toast from 'react-hot-toast';
 import { useReactToPrint } from 'react-to-print';
 import { 
@@ -2229,9 +2229,56 @@ const AdminDashboard = () => {
                 </button>
               </div>
             </div>
-            <div className="flex justify-center bg-gray-50 overflow-auto p-4">
-              <div ref={diplomaCertRef} className="bg-white">
-                <DiplomaCertificateTemplate certificateData={selectedDiploma} />
+            <div className="flex-1 overflow-auto p-6 bg-gray-50">
+              <div ref={diplomaCertRef} className="inline-block min-w-full align-middle border rounded-xl overflow-hidden shadow-sm bg-white p-4">
+                <table className="min-w-full text-xs border-separate border-spacing-0">
+                  <thead className="bg-gray-50 sticky top-0 z-20 shadow-sm">
+                    <tr>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap bg-gray-50 sticky left-0 z-30">Roll No</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Name</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Father's Name</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">DOB</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Programme</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Course</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Semester</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Academic Year</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Division</th>
+                      {selectedDiploma.marksData?.papers?.map((p, i) => (
+                         <Fragment key={i}>
+                            <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Subject {i+1}</th>
+                            <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Sub {i+1} Max</th>
+                            <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Sub {i+1} Min</th>
+                            <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Sub {i+1} Obt</th>
+                         </Fragment>
+                      ))}
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Total Max</th>
+                      <th className="p-2 border-b border-r text-left font-bold text-gray-500 uppercase whitespace-nowrap">Total Obt</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    <tr className="hover:bg-gray-50 transition-colors">
+                      <td className="p-2 border-r bg-white sticky left-0 z-10 font-mono font-bold text-blue-600 whitespace-nowrap shadow-[2px_0_5px_rgba(0,0,0,0.05)]">{selectedDiploma.rollNo}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.candidateName}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.fatherName}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.dateOfBirth}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.programmeName}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.courseName}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.semester}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.academicYear}</td>
+                      <td className="p-2 border-r whitespace-nowrap">{selectedDiploma.division}</td>
+                      {selectedDiploma.marksData?.papers?.map((p, i) => (
+                         <Fragment key={i}>
+                            <td className="p-2 border-r whitespace-nowrap">{p.subjectName}</td>
+                            <td className="p-2 border-r whitespace-nowrap">{p.max}</td>
+                            <td className="p-2 border-r whitespace-nowrap">{p.min}</td>
+                            <td className="p-2 border-r whitespace-nowrap font-semibold">{p.obtained}</td>
+                         </Fragment>
+                      ))}
+                      <td className="p-2 border-r whitespace-nowrap font-bold">{selectedDiploma.marksData?.overallMax}</td>
+                      <td className="p-2 border-r whitespace-nowrap font-bold text-blue-600">{selectedDiploma.marksData?.overallObt}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
