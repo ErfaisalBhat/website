@@ -423,8 +423,8 @@ const StudentDashboard = () => {
                           </div>
                           <p className="text-[11px] sm:text-[11.5px] text-gray-500 mb-3 leading-relaxed">
                             {result.paymentStatus === 'paid' && result.lastPaidAt
-                              ? `Certificate available for download for 180 days from payment date ${new Date(result.lastPaidAt).toLocaleDateString('en-GB')}.`
-                              : `Certificate available for download for 180 days from date of result ${parseResultDate(result.dateOfResultEnglish, result.createdAt ? new Date(result.createdAt) : new Date()).toLocaleDateString('en-GB')}.`}
+                              ? `Certificate available for download for 180 days from payment date ${new Date(result.lastPaidAt).toLocaleDateString('en-GB').replace(/\//g, '-')}.`
+                              : `Certificate available for download for 180 days from date of result ${parseResultDate(result.dateOfResultEnglish, result.createdAt ? new Date(result.createdAt) : new Date()).toLocaleDateString('en-GB').replace(/\//g, '-')}.`}
                           </p>
                         </div>
                           <button onClick={() => handleDownloadCertificate(result._id)}
