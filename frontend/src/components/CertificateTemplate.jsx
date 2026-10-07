@@ -66,10 +66,10 @@ const CertificateTemplate = ({ certificateData }) => {
          const day = String(d.getDate()).padStart(2, '0');
          const month = String(d.getMonth() + 1).padStart(2, '0');
          const year = d.getFullYear();
-         return `${day}/${month}/${year}`;
+         return `${day}-${month}-${year}`;
       }
     }
-    return str;
+    return str.replace(/\//g, '-');
   };
 
   const displayCertificateNo = formatCertNo(certificateNo, rollNo);
@@ -240,7 +240,7 @@ const CertificateTemplate = ({ certificateData }) => {
           {/* ══ COURSE TITLE ══ */}
           <div style={{ textAlign:'center', lineHeight:1.25, marginBottom:'4px' }}>
             <div style={{ ...kokila, fontSize:'25px',fontWeight:'bold' }}>{courseNameHindi} प्रमाणपत्र</div>
-            <div style={{ ...tahoma, fontSize:'17px', fontWeight:'bold', letterSpacing:'0.6px', textTransform:'uppercase' }}>
+            <div style={{ ...tahoma, fontSize:'17px', fontWeight:'bold', letterSpacing:'0.6px' }}>
               {courseNameEnglish}
             </div>
           </div>
