@@ -2,7 +2,7 @@ import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 /* ── Designations (Hindi first, then English) — edit here if the wording changes ── */
-const OSD_HINDI        = 'विशेष कार्य अधिकारी (परीक्षा)';
+const OSD_HINDI        = 'वि.क.अ. (परीक्षा)';
 const OSD_ENGLISH      = 'O.S.D. (Examination)';
 const CONTROLLER_HINDI = 'परीक्षा नियंत्रक';
 const CONTROLLER_ENGLISH = 'Controller of Examination';
