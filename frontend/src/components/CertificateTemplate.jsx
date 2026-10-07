@@ -60,15 +60,28 @@ const CertificateTemplate = ({ certificateData }) => {
   const formatDisplayDate = (dateStr) => {
     if (!dateStr) return '';
     let str = String(dateStr).trim();
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    
     if (/^\d{5}$/.test(str)) {
       const d = new Date(Math.round((parseInt(str, 10) - 25569) * 86400 * 1000));
       if (!isNaN(d.getTime())) {
          const day = String(d.getDate()).padStart(2, '0');
-         const month = String(d.getMonth() + 1).padStart(2, '0');
+         const monthName = months[d.getMonth()];
          const year = d.getFullYear();
-         return `${day}-${month}-${year}`;
+         return `${day}-${monthName}-${year}`;
       }
     }
+    
+    const parts = str.split(/[\/-]/);
+    if (parts.length === 3) {
+      let day = parts[0].padStart(2, '0');
+      let monthIndex = parseInt(parts[1], 10) - 1;
+      let year = parts[2];
+      if (monthIndex >= 0 && monthIndex < 12) {
+        return `${day}-${months[monthIndex]}-${year}`;
+      }
+    }
+
     return str.replace(/\//g, '-');
   };
 
