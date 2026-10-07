@@ -14,7 +14,7 @@ import NotFound from './components/NotFound';
 // Detect which subdomain we're on
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const isStudentDomain = hostname === 'results.vminstitute.in' || hostname === 'localhost';
-const isAdminDomain   = hostname === 'resultsadmin.vminstitute.in' || hostname === 'admin.vminstitute.in';
+const isAdminDomain   = hostname === 'resultsadmin.vminstitute.in';
 const isVerifyDomain  = hostname === 'verifyresults.vminstitute.in';
 
 function App() {
