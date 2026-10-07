@@ -14,7 +14,7 @@ import NotFound from './components/NotFound';
 // Detect which subdomain we're on
 const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
 const isStudentDomain = hostname === 'results.vminstitute.in' || hostname === 'localhost';
-const isAdminDomain   = hostname === 'resultsadmin.vminstitute.in' || hostname === 'admin.vminstitute.in';
+const isAdminDomain   = hostname === 'resultsadmin.vminstitute.in';
 const isVerifyDomain  = hostname === 'verifyresults.vminstitute.in';
 
 function App() {
@@ -73,20 +73,23 @@ function App() {
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/diploma" element={<StudentDiplomaDownload />} />
           
-          {/* Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-          <Route path="/login" element={<LoginForm />} />
-          
-          {/* Teacher Routes */}
-          <Route path="/teacher" element={
-            <ProtectedRoute allowedRoles={['teacher']}>
-              <TeacherDashboard />
-            </ProtectedRoute>
-          } />
+          {/* Admin and Teacher Routes (Local testing only) */}
+          {(hostname === 'localhost' || hostname === '127.0.0.1') && (
+            <>
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/login" element={<LoginForm />} />
+              
+              <Route path="/teacher" element={
+                <ProtectedRoute allowedRoles={['teacher']}>
+                  <TeacherDashboard />
+                </ProtectedRoute>
+              } />
+            </>
+          )}
 
           {/* Verify Routes */}
           <Route path="/verify" element={<VerifyCertificate />} />
