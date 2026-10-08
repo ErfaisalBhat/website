@@ -293,8 +293,10 @@ const StudentDiplomaDownload = () => {
 
         {/* ── Certificate preview (Download tab) ────────────────────────────── */}
         {activeTab === TAB_DOWNLOAD && certificate && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 flex flex-col items-center">
-            <div className="flex flex-wrap gap-4 mb-6 justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 flex flex-col items-center mt-8">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Your Diploma is Ready</h3>
+            <p className="text-gray-600 mb-6 text-center">Click the button below to download your official diploma certificate.</p>
+            <div className="flex flex-wrap gap-4 justify-center">
               <button
                 onClick={handleDownloadPDF}
                 disabled={isSavingPDF}
@@ -304,22 +306,12 @@ const StudentDiplomaDownload = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                {isSavingPDF ? 'Processing...' : 'Download PDF'}
-              </button>
-
-              <button
-                onClick={handlePrint}
-                className="bg-green-700 text-white font-bold py-3 px-6 rounded-xl hover:bg-green-800 transition-colors shadow-md flex items-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print
+                {isSavingPDF ? 'Generating...' : 'Download PDF'}
               </button>
             </div>
 
-            <div className="border border-gray-200 shadow-inner p-4 bg-gray-50 overflow-auto max-w-full">
+            {/* Hidden template for PDF generation */}
+            <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
               <div ref={certificateRef} className="bg-white">
                 <DiplomaCertificateTemplate certificateData={certificate} />
               </div>

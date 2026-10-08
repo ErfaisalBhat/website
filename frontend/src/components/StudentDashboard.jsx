@@ -111,9 +111,20 @@ const StudentDashboard = () => {
     } finally {
       setIsSavingPDF(false);
       isSavingRef.current = false;
+      setSelectedResult(null);
     }
   };
 
+
+
+  useEffect(() => {
+    if (selectedResult && certificateRef.current && !isSavingRef.current) {
+      const timer = setTimeout(() => {
+        handleDownloadPDF();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedResult]);
 
   useEffect(() => {
     const token = localStorage.getItem('studentToken');
@@ -491,30 +502,21 @@ const StudentDashboard = () => {
         )}
       </main>
 
+      {/* Hidden Certificate Template for PDF Generation */}
       {selectedResult && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl w-full max-h-[95vh] overflow-y-auto mx-auto shadow-2xl" style={{ maxWidth: 'min(95vw, 1000px)' }}>
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 sm:p-5 z-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <h3 className="text-lg font-bold text-gray-800">Certificate Preview</h3>
-              <div className="flex gap-3">
-                <button onClick={handleDownloadPDF} disabled={isSavingPDF}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 shadow-sm transition-colors text-sm disabled:opacity-50">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  {isSavingPDF ? 'Processing...' : 'Print'}
-                </button>
-                <button onClick={() => setSelectedResult(null)}
-                  className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors text-sm">
-                  Close
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-center bg-gray-50 overflow-auto">
-              <div ref={certificateRef} id="printableContent" className="bg-white">
-                <CertificateTemplate certificateData={selectedResult} student={student} />
-              </div>
-            </div>
+        <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+          <div ref={certificateRef} id="printableContent" className="bg-white">
+            <CertificateTemplate certificateData={selectedResult} student={student} />
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay for Generation */}
+      {isSavingPDF && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+          <div className="bg-white rounded-xl p-6 shadow-2xl flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+            <p className="text-gray-800 font-medium">Generating your certificate...</p>
           </div>
         </div>
       )}

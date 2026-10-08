@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 /* ── Designations (Hindi first, then English) — edit here if the wording changes ── */
@@ -12,6 +12,38 @@ const DISCLAIMER_HINDI =
   '(यह प्रमाणपत्र डिजिटल रूप से जारी किया गया है और इस संस्थान के होलोग्राम के बिना इसका प्रिंट अमान्य है।)';
 const DISCLAIMER_ENGLISH =
   '(This certificate is digitally issued and printing it is invalid without the Institute hologram.)';
+
+/* Shrinks the font until the text fits on ONE line inside its container */
+const FitLine = ({ children, baseSize, minSize = 10, style = {} }) => {
+  const boxRef = useRef(null);
+  const textRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const fit = () => {
+      const box = boxRef.current;
+      const text = textRef.current;
+      if (!box || !text) return;
+      text.style.fontSize = `${baseSize}px`;
+      const avail = box.clientWidth;
+      const needed = text.scrollWidth;
+      if (needed > avail) {
+        const newSize = Math.max(minSize, Math.floor((baseSize * avail / needed) * 100) / 100);
+        text.style.fontSize = `${newSize}px`;
+      }
+    };
+    fit();
+    // re-fit once custom fonts (Kokila etc.) have loaded
+    if (document.fonts?.ready) document.fonts.ready.then(fit);
+  }, [children, baseSize, minSize]);
+
+  return (
+    <div ref={boxRef} style={{ width: '100%', textAlign: 'center', whiteSpace: 'nowrap' }}>
+      <span ref={textRef} style={{ display: 'inline-block', whiteSpace: 'nowrap', ...style }}>
+        {children}
+      </span>
+    </div>
+  );
+};
 
 const CertificateTemplate = ({ certificateData }) => {
   const {
@@ -163,6 +195,9 @@ const CertificateTemplate = ({ certificateData }) => {
   const infoHindi = { ...kokila, fontSize: '14px', lineHeight: 1.3,fontWeight:'bold' };
   const infoEng   = { ...tahoma, fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' };
 
+  /* Left-aligned cell for the "Papers" column */
+  const leftCell = { textAlign:'left', paddingLeft:'12px' };
+
   return (
     <>
       <style>{`
@@ -250,12 +285,14 @@ const CertificateTemplate = ({ certificateData }) => {
           </div>
 
           {spacer}
-          {/* ══ COURSE TITLE ══ */}
-          <div style={{ textAlign:'center', lineHeight:1.25, marginBottom:'4px' }}>
-            <div style={{ ...kokila, fontSize:'25px',fontWeight:'bold' }}>{courseNameHindi} प्रमाणपत्र</div>
-            <div style={{ ...tahoma, fontSize:'17px', fontWeight:'bold', letterSpacing:'0.6px' }}>
-              {courseNameEnglish}
-            </div>
+          {/* ══ COURSE TITLE (unbold, auto-shrinks to stay on ONE line each) ══ */}
+          <div style={{ lineHeight:1.25, marginBottom:'4px' }}>
+            <FitLine baseSize={25} style={{ ...kokila, fontWeight:'normal' }}>
+              {`${courseNameHindi ?? ''} प्रमाणपत्र`}
+            </FitLine>
+            <FitLine baseSize={17} style={{ ...tahoma, fontWeight:'normal', letterSpacing:'0.6px' }}>
+              {courseNameEnglish ?? ''}
+            </FitLine>
           </div>
 
           {spacer}
@@ -334,7 +371,8 @@ const CertificateTemplate = ({ certificateData }) => {
                   <div style={{ ...kokila, fontSize:'18px' }}>क्रमांक</div>
                   <div style={{ ...tahoma, fontSize:'13px' }}>Sr. No.</div>
                 </th>
-                <th style={thBase}>
+                {/* Papers — left aligned */}
+                <th style={{ ...thBase, ...leftCell }}>
                   <div style={{ ...kokila, fontSize:'18px' }}>परीक्षा पत्र</div>
                   <div style={{ ...tahoma, fontSize:'13px' }}>Papers</div>
                 </th>
@@ -360,9 +398,9 @@ const CertificateTemplate = ({ certificateData }) => {
               {/* Row 1 — Internal Assessment */}
               <tr>
                 <td style={tdValue}>1.</td>
-                <td style={tdBase}>
+                <td style={{ ...tdBase, ...leftCell }}>
                   <div style={{ ...kokila, fontSize:'19px' }}>आंतरिक मूल्यांकन</div>
-                  <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Internal Assessment</div>
+                  <div style={{ ...tahoma, fontSize:'13px', marginBottom:'3px' }}>Internal Assessment</div>
                 </td>
                 <td style={tdValue}>{iaSubCode}</td>
                 <td style={tdValue}>{iaMaxMarks}</td>
@@ -377,9 +415,9 @@ const CertificateTemplate = ({ certificateData }) => {
               {/* Row 2 — Main Examination */}
               <tr>
                 <td style={tdValue}>2.</td>
-                <td style={tdBase}>
+                <td style={{ ...tdBase, ...leftCell }}>
                   <div style={{ ...kokila, fontSize:'19px' }}>मुख्य परीक्षा</div>
-                  <div style={{ ...tahoma, fontSize:'13px',marginBottom:'3px' }}>Main Examination</div>
+                  <div style={{ ...tahoma, fontSize:'13px', marginBottom:'3px' }}>Main Examination</div>
                 </td>
                 <td style={tdValue}>{meSubCode}</td>
                 <td style={tdValue}>{meMaxMarks}</td>
