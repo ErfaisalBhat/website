@@ -794,12 +794,6 @@ const AdminDashboard = () => {
                   count={draftBatches.length}
                 />
                 <NavItem
-                  icon={PhotoIcon}
-                  label="Photos"
-                  active={activeTab === 'photos'}
-                  onClick={() => setActiveTab('photos')}
-                />
-                <NavItem
                   icon={CheckBadgeIcon}
                   label="Approvals"
                   active={activeTab === 'pending'}
@@ -1044,7 +1038,7 @@ const AdminDashboard = () => {
                             <>
                               <CloudArrowUpIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                               <p className="text-xs font-medium text-slate-600">Click or drag to upload PNG signature</p>
-                              <p className="text-[10px] text-slate-500 mt-1">Recommended: 85x85px (1:1 square)</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Recommended: Clear transparent PNG (e.g. 300x120px)</p>
                             </>
                           )}
                         </div>
@@ -1386,13 +1380,6 @@ const AdminDashboard = () => {
                                     <EyeIcon className="w-5 h-5" />
                                   </button>
                                   <button
-                                    onClick={() => handleManagePhotos(batch)}
-                                    className="text-orange-500 hover:text-orange-700 p-1.5 hover:bg-orange-50 rounded-lg transition-all"
-                                    title="Manage Photographs"
-                                  >
-                                    <PhotoIcon className="w-5 h-5" />
-                                  </button>
-                                  <button
                                     onClick={() => handleDeleteApproved(batch._id)}
                                     className="text-red-500 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-all"
                                     title="Delete Batch"
@@ -1483,111 +1470,6 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            {activeTab === 'photos' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Student Photographs</h2>
-                    <p className="text-gray-500">Manage profile pictures for all registered students.</p>
-                  </div>
-                  <div className="relative">
-                    <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Search name or email..." 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500 w-64 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border">
-                  <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b">
-                      <tr>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Student</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase">Roll No</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase text-center">Status</th>
-                        <th className="p-4 text-xs font-bold text-gray-500 uppercase text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {students
-                        .filter(s => 
-                          s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          s.email.toLowerCase().includes(searchQuery.toLowerCase())
-                        )
-                        .map(student => (
-                        <tr key={student._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-4">
-                              {student.profileImageId ? (
-                                <img 
-                                  src={
-                                    student.profileImageId.startsWith('http') || student.profileImageId.startsWith('data:')
-                                      ? student.profileImageId
-                                      : `${API_URL}/uploads/${student.profileImageId}`
-                                  }
-                                  alt="" 
-                                  className="w-12 h-12 rounded-lg object-cover border"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400">
-                                  <PhotoIcon className="w-6 h-6" />
-                                </div>
-                              )}
-                              <div>
-                                <p className="font-bold text-gray-800">{student.name}</p>
-                                <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Student ID: {student._id.slice(-6)}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4">
-                            <p className="text-sm font-medium text-gray-700">{student.rollNo || 'Not Assigned'}</p>
-                          </td>
-                          <td className="p-4 text-center">
-                            {student.profileImageId ? (
-                              <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold">HAS PHOTO</span>
-                            ) : (
-                              <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-bold">MISSING</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-right">
-                            {student.hasApprovedResult && student.profileImageId ? (
-                               <span className="inline-flex items-center gap-1 text-gray-500 font-bold text-sm bg-gray-100 px-4 py-2 rounded-lg cursor-not-allowed">
-                                 <LockClosedIcon className="w-4 h-4" />
-                                 Locked (Published)
-                               </span>
-                            ) : (
-                              <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold transition-all inline-block shadow-sm ${student.profileImageId ? 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 shadow-sm' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'}`}>
-                                {student.profileImageId ? 'Change Photo' : 'Upload Photo'}
-                                <input 
-                                  type="file" 
-                                  className="hidden" 
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    if (e.target.files?.[0]) {
-                                      handlePhotoUpload(student._id, e.target.files[0]);
-                                    }
-                                  }}
-                                />
-                              </label>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {students.length === 0 && (
-                        <tr>
-                          <td colSpan="4" className="p-12 text-center text-gray-400">No students found</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
             {activeTab === 'teachers' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -2289,3 +2171,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+

@@ -235,30 +235,34 @@ const generateCertificate = async (req, res) => {
       // --- END ZOHO PAYMENT LOGIC ---
 
     if (!result.certificateNo) {
-      // Generate sequence number based on year
-      const yearStr = result.courseYearEnglish || new Date().getFullYear().toString();
-      const match = yearStr.match(/\d{4}/);
-      const year = match ? parseInt(match[0], 10) : new Date().getFullYear();
-      const shortYear1 = String(year).slice(-2);
-      const shortYear2 = String(year + 1).slice(-2);
-      const prefix = `${shortYear1}${shortYear2}`;
+      if (result.sNo) {
+        result.certificateNo = `VMI-${result.rollNo}-${result.sNo}`;
+      } else {
+        // Generate sequence number based on year
+        const yearStr = result.courseYearEnglish || new Date().getFullYear().toString();
+        const match = yearStr.match(/\d{4}/);
+        const year = match ? parseInt(match[0], 10) : new Date().getFullYear();
+        const shortYear1 = String(year).slice(-2);
+        const shortYear2 = String(year + 1).slice(-2);
+        const prefix = `${shortYear1}${shortYear2}`;
 
-      // Find highest certificateNo with this prefix
-      const lastResult = await Result.findOne({ certificateNo: new RegExp(`^${prefix}`) })
-        .sort({ certificateNo: -1 })
-        .exec();
+        // Find highest certificateNo with this prefix
+        const lastResult = await Result.findOne({ certificateNo: new RegExp(`^${prefix}`) })
+          .sort({ certificateNo: -1 })
+          .exec();
 
-      let nextNum = 1;
-      if (lastResult && lastResult.certificateNo) {
-        const lastNumStr = lastResult.certificateNo.slice(prefix.length);
-        const lastNum = parseInt(lastNumStr, 10);
-        if (!isNaN(lastNum)) {
-          nextNum = lastNum + 1;
+        let nextNum = 1;
+        if (lastResult && lastResult.certificateNo) {
+          const lastNumStr = lastResult.certificateNo.slice(prefix.length);
+          const lastNum = parseInt(lastNumStr, 10);
+          if (!isNaN(lastNum)) {
+            nextNum = lastNum + 1;
+          }
         }
+        
+        const seqStr = String(nextNum).padStart(3, '0');
+        result.certificateNo = `${prefix}${seqStr}`;
       }
-      
-      const seqStr = String(nextNum).padStart(3, '0');
-      result.certificateNo = `${prefix}${seqStr}`;
       result.issuedAt = new Date();
 
       // --- Snapshot current active signatures at FIRST DOWNLOAD time ---
@@ -324,6 +328,7 @@ const generateCertificate = async (req, res) => {
       dateOfResultHindi: result.dateOfResultHindi,
       dateOfResultEnglish: result.dateOfResultEnglish,
       certificateNo: result.certificateNo,
+      sNo: result.sNo,
       issuedAt: result.issuedAt,
       // profileImageId will be set after signature resolution (image downloads in parallel)
       profileImageId: null
@@ -458,25 +463,74 @@ const generateCertificate = async (req, res) => {
 
 const verifyCertificate = async (req, res) => {
   try {
-    const { certificateNo } = req.params;
+    let { certificateNo } = req.params;
 
     if (!certificateNo) {
       return res.status(400).json({ message: 'Certificate number is required' });
     }
 
-    let query = { certificateNo, status: 'approved' };
+    certificateNo = decodeURIComponent(certificateNo).trim();
+    let result = null;
 
-    // Support verification of the visual format "VMI-[RollNo]-[SeqNo]"
-    if (certificateNo.startsWith('VMI-')) {
-      const parts = certificateNo.split('-');
-      if (parts.length === 3) {
-        const rollStr = parts[1];
-        const seqStr = String(parts[2]).padStart(3, '0');
-        query = { rollNo: rollStr, certificateNo: new RegExp(seqStr + '$'), status: 'approved' };
+    // Support verification of the format "VMI-[RollNo]-[S.No.]" or "VMI-RollNo-S.No"
+    if (certificateNo.toUpperCase().startsWith('VMI-')) {
+      const rest = certificateNo.replace(/^VMI-/i, '');
+      const lastHyphen = rest.lastIndexOf('-');
+      if (lastHyphen !== -1) {
+        const rollRaw = rest.substring(0, lastHyphen).trim();
+        const sNoRaw = rest.substring(lastHyphen + 1).trim();
+
+        // Strip trailing dots, e.g. "240101." -> "240101", "1." -> "1"
+        const rollStr = rollRaw.replace(/\.+$/, '').trim();
+        const sNoStr = sNoRaw.replace(/\.+$/, '').trim();
+        const sNoNum = parseInt(sNoStr, 10);
+
+        const orConditions = [];
+        if (!isNaN(sNoNum)) {
+          orConditions.push({ sNo: sNoNum });
+          orConditions.push({ certificateNo: new RegExp(String(sNoNum).padStart(3, '0') + '$') });
+        }
+        orConditions.push({ sNo: sNoStr });
+        orConditions.push({ certificateNo: certificateNo });
+        orConditions.push({ certificateNo: `VMI-${rollStr}-${sNoStr}` });
+
+        result = await Result.findOne({
+          rollNo: { $regex: new RegExp(`^${rollStr}$`, 'i') },
+          $or: orConditions,
+          status: 'approved'
+        }).populate('student', 'profileImageId');
       }
     }
 
-    let result = await Result.findOne(query).populate('student', 'profileImageId');
+    // Direct certificateNo search (legacy or standard or exact match)
+    if (!result) {
+      result = await Result.findOne({
+        $or: [
+          { certificateNo: certificateNo },
+          { certificateNo: { $regex: new RegExp(`^${certificateNo}$`, 'i') } }
+        ],
+        status: 'approved'
+      }).populate('student', 'profileImageId');
+    }
+
+    // Fallback if user entered [RollNo]-[S.No] without VMI- prefix
+    if (!result && certificateNo.includes('-')) {
+      const lastHyphen = certificateNo.lastIndexOf('-');
+      const rollStr = certificateNo.substring(0, lastHyphen).replace(/\.+$/, '').trim();
+      const sNoStr = certificateNo.substring(lastHyphen + 1).replace(/\.+$/, '').trim();
+      const sNoNum = parseInt(sNoStr, 10);
+
+      const orConditions = [{ sNo: sNoStr }];
+      if (!isNaN(sNoNum)) {
+        orConditions.push({ sNo: sNoNum });
+      }
+
+      result = await Result.findOne({
+        rollNo: { $regex: new RegExp(`^${rollStr}$`, 'i') },
+        $or: orConditions,
+        status: 'approved'
+      }).populate('student', 'profileImageId');
+    }
 
     if (!result) {
       return res.status(404).json({ message: 'Invalid certificate number' });
@@ -488,7 +542,10 @@ const verifyCertificate = async (req, res) => {
       enrolmentNo: result.enrolmentNo,
       subject: result.subject,
       courseName: result.courseNameEnglish,
-      issuedAt: result.issuedAt,
+      issuedAt: result.issuedAt || result.dateOfResultEnglish || result.createdAt,
+      certificateNo: result.certificateNo || (result.sNo ? `VMI-${result.rollNo}-${result.sNo}` : ''),
+      sNo: result.sNo,
+      dateOfResultEnglish: result.dateOfResultEnglish,
       status: 'Verified',
       profileImageId: result.student?.profileImageId
     });

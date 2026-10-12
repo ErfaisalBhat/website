@@ -133,12 +133,12 @@ const VerifyCertificate = () => {
             {/* ── Unified Search Form ──────────────────────────────────────── */}
             <form onSubmit={handleVerify} className="max-w-lg mx-auto mb-10">
               <p className="text-sm text-gray-500 text-center mb-4">
-                Enter the Certificate Number printed on your <strong>Degree</strong> or <strong>Diploma</strong> certificate
+                Enter the Certificate Number printed on your <strong>Degree</strong> (e.g. <strong>VMI-RollNo-S.No</strong>) or <strong>Diploma</strong> certificate
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <input
                   type="text"
-                  placeholder="Enter Certificate Number"
+                  placeholder="Enter Certificate Number (e.g. VMI-RollNo-S.No)"
                   value={certNo}
                   onChange={(e) => setCertNo(e.target.value)}
                   className="flex-grow p-4 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
@@ -266,13 +266,19 @@ const VerifyCertificate = () => {
                         </div>
                         <div className="space-y-6">
                           <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Certificate Number</label>
+                            <p className="text-lg font-semibold text-gray-700">{d.certificateNo || (d.sNo ? `VMI-${d.rollNo}-${d.sNo}` : '—')}</p>
+                          </div>
+                          <div>
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Subject/Course</label>
                             <p className="text-lg font-semibold text-gray-700">{d.subject}</p>
                           </div>
                           <div>
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
                             <p className="text-lg font-semibold text-gray-700">
-                              {d.issuedAt && new Date(d.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              {d.issuedAt && !isNaN(new Date(d.issuedAt).getTime())
+                                ? new Date(d.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : (d.dateOfResultEnglish || 'Verified on Portal')}
                             </p>
                           </div>
                           <div className="pt-2">

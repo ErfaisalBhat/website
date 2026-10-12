@@ -53,7 +53,7 @@ const CertificateTemplate = ({ certificateData }) => {
     modeHindi, modeEnglish, iaSubCode, meSubCode, iaMaxMarks, meMaxMarks,
     maxMarks, iaMarks, meMarks, marksTotal, resultRemarkHindi, resultRemarkEnglish,
     dateOfResultHindi, dateOfResultEnglish, certificateNo, student,
-    authSignatureImage, controllerSignatureImage,
+    authSignatureImage, controllerSignatureImage, sNo,
   } = certificateData || {};
 
   const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
@@ -76,8 +76,11 @@ const CertificateTemplate = ({ certificateData }) => {
         ? authSignatureImage
         : `${API_URL}/${authSignatureImage}`)
     : '/BKG Signature.png';
-  const formatCertNo = (certNo, roll) => {
-    if (!certNo) return '';
+  const formatCertNo = (certNo, roll, sNoVal) => {
+    if (sNoVal !== undefined && sNoVal !== null && sNoVal !== 0 && sNoVal !== '') {
+      return `VMI-${roll}-${sNoVal}`;
+    }
+    if (!certNo) return roll ? `VMI-${roll}` : '';
     if (certNo.includes('-')) return certNo;
     if (certNo.length > 4 && roll) {
       const seqStr = certNo.substring(4);
@@ -117,10 +120,10 @@ const CertificateTemplate = ({ certificateData }) => {
     return str.replace(/[\/-]/g, ' ');
   };
 
-  const displayCertificateNo = formatCertNo(certificateNo, rollNo);
+  const displayCertificateNo = formatCertNo(certificateNo, rollNo, sNo);
 
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
-  const qrData = certificateNo
+  const qrData = displayCertificateNo
     ? `${currentOrigin}/verify?certNo=${displayCertificateNo}`
     : `${currentOrigin}/verify`;
 
@@ -442,8 +445,8 @@ const CertificateTemplate = ({ certificateData }) => {
 
             {/* Left — O.S.D. (Examination) */}
             <div style={{ textAlign:'center', width:'215px' }}>
-              <div style={{ height:'90px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={authSigSrc} alt="Signature" style={{ width:'85px', height:'85px', objectFit:'contain' }} />
+              <div style={{ height:'90px', width:'100%', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
+                <img src={authSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{OSD_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{OSD_ENGLISH}</div>
@@ -473,8 +476,8 @@ const CertificateTemplate = ({ certificateData }) => {
 
             {/* Right — Controller of Examination */}
             <div style={{ textAlign:'center', width:'215px' }}>
-              <div style={{ height:'90px', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={controllerSigSrc} alt="Signature" style={{ width:'85px', height:'85px', objectFit:'contain' }} />
+              <div style={{ height:'90px', width:'100%', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
+                <img src={controllerSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{CONTROLLER_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{CONTROLLER_ENGLISH}</div>

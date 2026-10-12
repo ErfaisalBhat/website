@@ -39,7 +39,7 @@ const StudentDashboard = () => {
     const opt = {
       margin: 0,
       filename: `${selectedResult?.rollNo || 'Certificate'}.pdf`,
-      image: { type: 'jpeg', quality: 0.72 },
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
         scale: 4,
         useCORS: true,
@@ -390,17 +390,21 @@ const StudentDashboard = () => {
                   return { status: 'expired' };
                 };
   
+                const formatRemainingDays = (minutes) => {
+                  if (minutes >= 1440) {
+                    const days = Math.floor(minutes / 1440);
+                    return `${days} day${days !== 1 ? 's' : ''}`;
+                  }
+                  if (minutes >= 60) {
+                    const hours = Math.floor(minutes / 60);
+                    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+                  }
+                  return `${minutes} min`;
+                };
+
                 const formatRemaining = (minutes) => {
-                if (minutes >= 1440) {
-                  const days = Math.floor(minutes / 1440);
-                  return `${days} day${days !== 1 ? 's' : ''} remaining`;
-                }
-                if (minutes >= 60) {
-                  const hours = Math.floor(minutes / 60);
-                  return `${hours} hour${hours !== 1 ? 's' : ''} remaining`;
-                }
-                return `${minutes} min remaining`;
-              };
+                  return `${formatRemainingDays(minutes)} remaining`;
+                };
 
               return (
               <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
@@ -420,15 +424,17 @@ const StudentDashboard = () => {
                         <div>
                           <div className="flex justify-between items-start mb-1">
                             <h4 className="font-bold text-gray-800">{result.subject}</h4>
-                            {result.certificateNo && (
+                            {(result.certificateNo || (result.sNo !== undefined && result.sNo !== null && result.sNo !== 0)) && (
                               <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded font-mono">
-                                {(() => {
-                                  const certNo = result.certificateNo;
-                                  const roll = student?.rollNo;
-                                  if (!certNo || certNo.includes('-') || !roll || certNo.length <= 4) return certNo;
-                                  const seqNum = parseInt(certNo.substring(4), 10);
-                                  return !isNaN(seqNum) ? `VMI-${roll}-${seqNum}` : certNo;
-                                })()}
+                                {result.sNo
+                                  ? `VMI-${student?.rollNo || result.rollNo}-${result.sNo}`
+                                  : (() => {
+                                      const certNo = result.certificateNo;
+                                      const roll = student?.rollNo;
+                                      if (!certNo || certNo.includes('-') || !roll || certNo.length <= 4) return certNo;
+                                      const seqNum = parseInt(certNo.substring(4), 10);
+                                      return !isNaN(seqNum) ? `VMI-${roll}-${seqNum}` : certNo;
+                                    })()}
                               </span>
                             )}
                           </div>
@@ -476,7 +482,9 @@ const StudentDashboard = () => {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                               </svg>
                               <span className="text-xs text-blue-600">
-                                {dlStatus.remaining ? `Free download — ${formatRemaining(dlStatus.remaining)}` : 'Free downloads available'}
+                                {dlStatus.remaining
+                                  ? `Certificate downloadable for ${formatRemainingDays(dlStatus.remaining)}; a fee applies thereafter.`
+                                  : 'Certificate downloadable for 180 days; a fee applies thereafter.'}
                               </span>
                             </div>
                           )}
