@@ -446,7 +446,7 @@ const CertificateTemplate = ({ certificateData }) => {
             {/* Left — O.S.D. (Examination) */}
             <div style={{ textAlign:'center', width:'215px' }}>
               <div style={{ height:'90px', width:'100%', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={authSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block' }} />
+                <img src={authSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block', mixBlendMode:'multiply' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{OSD_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{OSD_ENGLISH}</div>
@@ -477,7 +477,7 @@ const CertificateTemplate = ({ certificateData }) => {
             {/* Right — Controller of Examination */}
             <div style={{ textAlign:'center', width:'215px' }}>
               <div style={{ height:'90px', width:'100%', display:'flex', alignItems:'flex-end', justifyContent:'center', marginBottom:'3px' }}>
-                <img src={controllerSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block' }} />
+                <img src={controllerSigSrc} alt="Signature" style={{ maxWidth:'180px', maxHeight:'75px', width:'auto', height:'auto', objectFit:'contain', imageRendering:'-webkit-optimize-contrast', display:'block', mixBlendMode:'multiply' }} />
               </div>
               <div style={{ ...kokila, fontSize:'18px', marginTop:'3px', lineHeight:1.3 }}>{CONTROLLER_HINDI}</div>
               <div style={{ ...tahoma, fontSize:'12px', marginTop:'1px' }}>{CONTROLLER_ENGLISH}</div>

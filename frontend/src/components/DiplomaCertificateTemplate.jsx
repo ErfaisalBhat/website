@@ -193,6 +193,7 @@ const DiplomaCertificateTemplate = ({ certificateData }) => {
           max-width: 100%;
           max-height: 100%;
           object-fit: contain;
+          mix-blend-mode: multiply;
         }
         .sign-label {
           font-weight: 700;

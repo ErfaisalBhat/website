@@ -130,6 +130,23 @@ const VerifyCertificate = () => {
 
   const d = result?.data;
 
+  const formatVerifyDate = (dateVal) => {
+    if (!dateVal) return 'Verified on Portal';
+    const str = String(dateVal).trim();
+    if (/^\d{5}$/.test(str)) {
+      const num = parseInt(str, 10);
+      const dateObj = new Date(Math.round((num - 25569) * 864e5));
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    }
+    const dateObj = new Date(dateVal);
+    if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() > 1970 && dateObj.getFullYear() < 3000) {
+      return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+    return str;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <StudentHeader />
@@ -311,9 +328,7 @@ const VerifyCertificate = () => {
                           <div>
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
                             <p className="text-lg font-semibold text-gray-700">
-                              {d.issuedAt && !isNaN(new Date(d.issuedAt).getTime())
-                                ? new Date(d.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-                                : (d.dateOfResultEnglish || 'Verified on Portal')}
+                              {formatVerifyDate(d.issuedAt || d.dateOfResultEnglish)}
                             </p>
                           </div>
                           <div className="pt-2">
@@ -366,7 +381,7 @@ const VerifyCertificate = () => {
                           <div>
                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date of Issuance</label>
                             <p className="text-lg font-semibold text-gray-700">
-                              {d.issuedAt && new Date(d.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                              {formatVerifyDate(d.issuedAt)}
                             </p>
                           </div>
                           <div className="pt-2">

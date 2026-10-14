@@ -17,6 +17,7 @@ import {
   MagnifyingGlassIcon,
   LockClosedIcon
 } from '@heroicons/react/24/outline';
+import { processSignatureImage } from '../utils/signatureUtils';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -38,6 +39,23 @@ const NavItem = ({ icon: Icon, label, active, onClick, count }) => (
     )}
   </button>
 );
+
+const formatDisplayResultDate = (str) => {
+  if (!str) return '';
+  const s = String(str).trim();
+  if (/^\d{5}$/.test(s)) {
+    const num = parseInt(s, 10);
+    const d = new Date(Math.round((num - 25569) * 864e5));
+    if (!isNaN(d.getTime())) {
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const monthName = months[d.getUTCMonth()];
+      const year = d.getUTCFullYear();
+      return `${day} ${monthName} ${year}`;
+    }
+  }
+  return s;
+};
 
 const AdminDashboard = () => {
   const { adminUser: user, logoutAdmin: logout } = useAuth();
@@ -216,11 +234,12 @@ const AdminDashboard = () => {
   const handleCertSignatureUploadSubmit = async (e) => {
     e.preventDefault();
     if (!certSignatureFile) {
-      toast.error('Please select a PNG file to upload.');
+      toast.error('Please select a signature image to upload.');
       return;
     }
+    const cleanFile = await processSignatureImage(certSignatureFile);
     const formData = new FormData();
-    formData.append('file', certSignatureFile);
+    formData.append('file', cleanFile);
     formData.append('role', certSignatureRole);
     const labelToSend = certSignatureRole === 'O.S.D. (Examination)' ? authLabelInput : controllerLabelInput;
     if (labelToSend.trim()) {
@@ -291,11 +310,12 @@ const AdminDashboard = () => {
   const handleSignatureUploadSubmit = async (e) => {
     e.preventDefault();
     if (!signatureFile) {
-      toast.error('Please select a PNG file');
+      toast.error('Please select an image file');
       return;
     }
+    const cleanFile = await processSignatureImage(signatureFile);
     const formData = new FormData();
-    formData.append('file', signatureFile);
+    formData.append('file', cleanFile);
     formData.append('signatoryLabel', signatoryLabel);
 
     const loadingToast = toast.loading('Uploading signature...');
@@ -677,7 +697,7 @@ const AdminDashboard = () => {
       r.modeEnglish || '', r.iaSubCode || '', r.meSubCode || '', r.iaMaxMarks || 0, r.meMaxMarks || 0,
       r.maxMarks || 0, r.iaMarks || 0, r.meMarks || 0, r.marksTotal || 0,
       r.resultRemarkHindi || '', r.resultRemarkEnglish || '', r.dateOfResultHindi || '',
-      r.dateOfResultEnglish || '', r.subjectCode || '', r.academicYear || '', r.courseName || '',
+      formatDisplayResultDate(r.dateOfResultEnglish) || '', r.subjectCode || '', r.academicYear || '', r.courseName || '',
       r.examFlag || '', r.part || '', r.semester || ''
     ]);
 
@@ -935,7 +955,17 @@ const AdminDashboard = () => {
 
                     {/* Active Signatures List */}
                     <div className="mb-6 p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
-                      <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Active Signatures</h3>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Active Signatures</h3>
+                        <button
+                          type="button"
+                          onClick={handleResetSignatureSnapshots}
+                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                          title="Apply currently active signatures to all issued certificates"
+                        >
+                          Sync to all issued certificates
+                        </button>
+                      </div>
                       {activeCertSignatures.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {activeCertSignatures.map(sig => (
@@ -1017,13 +1047,19 @@ const AdminDashboard = () => {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Upload PNG Signature</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Upload Signature</label>
                         <div className="bg-white border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-slate-500 transition-all cursor-pointer relative">
                           <input 
                             type="file" 
-                            onChange={(e) => setCertSignatureFile(e.target.files[0])} 
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const cleanFile = await processSignatureImage(file);
+                                setCertSignatureFile(cleanFile);
+                              }
+                            }} 
                             className="absolute inset-0 opacity-0 cursor-pointer" 
-                            accept="image/png" 
+                            accept="image/*" 
                           />
                           {certSignatureFile ? (
                             <>
@@ -1033,12 +1069,15 @@ const AdminDashboard = () => {
                                 className="max-h-20 mx-auto mb-2 object-contain mix-blend-multiply"
                               />
                               <p className="text-xs text-slate-900 font-bold">{certSignatureFile.name}</p>
+                              <span className="inline-block mt-1 text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-medium">
+                                Transparent PNG ready
+                              </span>
                             </>
                           ) : (
                             <>
                               <CloudArrowUpIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                              <p className="text-xs font-medium text-slate-600">Click or drag to upload PNG signature</p>
-                              <p className="text-[10px] text-slate-500 mt-1">Recommended: Clear transparent PNG (e.g. 300x120px)</p>
+                              <p className="text-xs font-medium text-slate-600">Click or drag to upload signature</p>
+                              <p className="text-[10px] text-slate-500 mt-1">Background is automatically removed and converted to transparent PNG</p>
                             </>
                           )}
                         </div>
@@ -1812,30 +1851,39 @@ const AdminDashboard = () => {
                     {/* Signature Upload Form */}
                     <form onSubmit={handleSignatureUploadSubmit} className="space-y-6">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload PNG Signature</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Upload Signature</label>
                         <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-blue-400 transition-all cursor-pointer relative">
                           <input 
                             type="file" 
-                            onChange={(e) => setSignatureFile(e.target.files[0])} 
+                            onChange={async (e) => {
+                              const file = e.target.files[0];
+                              if (file) {
+                                const cleanFile = await processSignatureImage(file);
+                                setSignatureFile(cleanFile);
+                              }
+                            }} 
                             className="absolute inset-0 opacity-0 cursor-pointer" 
-                            accept="image/png" 
+                            accept="image/*" 
                           />
                           {signatureFile ? (
                             <>
                               <img
                                 src={URL.createObjectURL(signatureFile)}
                                 alt="Signature preview"
-                                className="max-h-24 mx-auto mb-3 object-contain bg-gray-100 rounded-lg p-2"
+                                className="max-h-24 mx-auto mb-3 object-contain bg-gray-100 rounded-lg p-2 mix-blend-multiply"
                               />
                               <p className="text-sm text-blue-600 font-bold">{signatureFile.name}</p>
+                              <span className="inline-block mt-1 text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded font-medium">
+                                Transparent PNG ready
+                              </span>
                             </>
                           ) : (
                             <>
                               <CloudArrowUpIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                              <p className="text-sm text-gray-600">Click or drag to select a PNG signature file</p>
+                              <p className="text-sm text-gray-600">Click or drag to select a signature file</p>
+                              <p className="text-xs text-gray-400 mt-2">Background is automatically removed and converted to transparent PNG.</p>
                             </>
                           )}
-                          <p className="text-xs text-gray-400 mt-2">Only transparent background PNG images are recommended. Recommended: 85x85px (1:1 square).</p>
                         </div>
                       </div>
 
@@ -2050,7 +2098,7 @@ const AdminDashboard = () => {
                             className={`w-full border-gray-200 border rounded-lg p-1.5 outline-none transition-all bg-gray-100 text-gray-500 cursor-not-allowed`}
                           />
                         </td>
-                        <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.dateOfResultEnglish}</td>
+                        <td className="p-2 border-r text-gray-500 whitespace-nowrap">{formatDisplayResultDate(r.dateOfResultEnglish)}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.dateOfResultHindi}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.subjectCode}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.academicYear}</td>

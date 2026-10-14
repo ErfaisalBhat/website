@@ -194,8 +194,8 @@ function buildStudentCertificateHTML(data, paths, origin) {
     height: 48px; display: flex; align-items: flex-end;
     justify-content: center; margin-bottom: 3px;
   }
-  .sig-holder img { height: 40px; object-fit: contain; }
-  .sig-holder-auth img { height: 48px; object-fit: contain; }
+  .sig-holder img { height: 40px; object-fit: contain; mix-blend-mode: multiply; }
+  .sig-holder-auth img { height: 48px; object-fit: contain; mix-blend-mode: multiply; }
   .hr-sig { width: 100%; border: none; border-top: 1.5px solid #333; margin: 3px 0; }
 
   .divider { border-bottom: 1.5px solid #000; margin: 2px 0; }

@@ -46,6 +46,61 @@ const tryParseDate = (dateVal) => {
   return dateStr;
 };
 
+const formatResultDateEnglish = (dateVal) => {
+  if (!dateVal) return '';
+
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+  // Handle Excel Serial Dates (number or 5-digit string like 46178)
+  const isSerial = typeof dateVal === 'number' || (typeof dateVal === 'string' && /^\d{5}$/.test(dateVal.trim()));
+  if (isSerial) {
+    const num = typeof dateVal === 'number' ? dateVal : parseInt(dateVal.trim(), 10);
+    const date = new Date(Math.round((num - 25569) * 864e5));
+    if (!isNaN(date.getTime())) {
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const monthName = months[date.getUTCMonth()];
+      const year = date.getUTCFullYear();
+      return `${day} ${monthName} ${year}`;
+    }
+  }
+
+  if (dateVal instanceof Date) {
+    const day = String(dateVal.getUTCDate()).padStart(2, '0');
+    const monthName = months[dateVal.getUTCMonth()];
+    const year = dateVal.getUTCFullYear();
+    return `${day} ${monthName} ${year}`;
+  }
+
+  const str = dateVal.toString().trim();
+
+  // If already formatted like "15 May 2025" or "05 June 2026"
+  if (/^\d{1,2}\s+[A-Za-z]+\s+\d{4}$/.test(str)) {
+    return str;
+  }
+
+  // Handle DD-MM-YYYY or DD/MM/YYYY
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (dmyMatch) {
+    const [_, d, m, y] = dmyMatch;
+    const mIdx = parseInt(m, 10) - 1;
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${d.padStart(2, '0')} ${months[mIdx]} ${y}`;
+    }
+  }
+
+  // Handle YYYY-MM-DD
+  const ymdMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (ymdMatch) {
+    const [_, y, m, d] = ymdMatch;
+    const mIdx = parseInt(m, 10) - 1;
+    if (mIdx >= 0 && mIdx < 12) {
+      return `${d.padStart(2, '0')} ${months[mIdx]} ${y}`;
+    }
+  }
+
+  return str;
+};
+
 
 
 const processCSV = (buffer) => {
@@ -126,8 +181,8 @@ const mapRowToResult = (row) => {
     marksTotal,
     resultRemarkHindi:    computedRemark.hindi,
     resultRemarkEnglish:  computedRemark.english,
-    dateOfResultHindi:    row[26] || '',
-    dateOfResultEnglish:  row[27] || '',
+    dateOfResultHindi:    (/[\u0900-\u097F]/.test(String(row[27])) && !/[\u0900-\u097F]/.test(String(row[26]))) ? (row[27] || '') : (row[26] || ''),
+    dateOfResultEnglish:  formatResultDateEnglish((/[\u0900-\u097F]/.test(String(row[27])) && !/[\u0900-\u097F]/.test(String(row[26]))) ? (row[26] || '') : (row[27] || '')),
     subjectCode:          row[28]?.toString() || '',
     academicYear:         row[29] || '',
     courseName:           row[30] || '',

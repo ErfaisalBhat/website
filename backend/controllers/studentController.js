@@ -30,6 +30,19 @@ function imageUrlToBase64(url) {
   });
 }
 
+const formatResultDateFallback = (val) => {
+  if (!val) return '';
+  const s = String(val).trim();
+  if (/^\d{5}$/.test(s)) {
+    const num = parseInt(s, 10);
+    const d = new Date(Math.round((num - 25569) * 864e5));
+    if (!isNaN(d.getTime())) {
+      const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      return `${String(d.getUTCDate()).padStart(2, '0')} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+    }
+  }
+  return s;
+};
 
 const verifyStudent = async (req, res) => {
   try {
@@ -326,7 +339,7 @@ const generateCertificate = async (req, res) => {
       resultRemarkHindi: result.resultRemarkHindi,
       resultRemarkEnglish: result.resultRemarkEnglish,
       dateOfResultHindi: result.dateOfResultHindi,
-      dateOfResultEnglish: result.dateOfResultEnglish,
+      dateOfResultEnglish: formatResultDateFallback(result.dateOfResultEnglish),
       certificateNo: result.certificateNo,
       sNo: result.sNo,
       issuedAt: result.issuedAt,
@@ -542,10 +555,10 @@ const verifyCertificate = async (req, res) => {
       enrolmentNo: result.enrolmentNo,
       subject: result.subject,
       courseName: result.courseNameEnglish,
-      issuedAt: result.issuedAt || result.dateOfResultEnglish || result.createdAt,
+      issuedAt: result.issuedAt || formatResultDateFallback(result.dateOfResultEnglish) || result.createdAt,
       certificateNo: result.certificateNo || (result.sNo ? `VMI-${result.rollNo}-${result.sNo}` : ''),
       sNo: result.sNo,
-      dateOfResultEnglish: result.dateOfResultEnglish,
+      dateOfResultEnglish: formatResultDateFallback(result.dateOfResultEnglish),
       status: 'Verified',
       profileImageId: result.student?.profileImageId
     });

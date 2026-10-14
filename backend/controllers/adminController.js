@@ -608,6 +608,23 @@ const uploadCertificateSignature = async (req, res) => {
       uploadedBy: req.user._id,
     });
 
+    // Also update existing issued results so certificates immediately reflect the new signature
+    const Result = require('../models/Result');
+    const updateSnapshot = {};
+    if (role === 'O.S.D. (Examination)') {
+      updateSnapshot.snapshotAuthSignatureImage = dataUri;
+      if (signatoryLabel) updateSnapshot.snapshotAuthSignatureLabel = signatoryLabel;
+    } else if (role === 'Controller of Examination') {
+      updateSnapshot.snapshotControllerSignatureImage = dataUri;
+      if (signatoryLabel) updateSnapshot.snapshotControllerSignatureLabel = signatoryLabel;
+    }
+    if (Object.keys(updateSnapshot).length > 0) {
+      await Result.updateMany(
+        { status: 'approved', certificateNo: { $exists: true, $ne: null, $ne: '' } },
+        { $set: updateSnapshot }
+      );
+    }
+
     res.status(201).json({ message: 'Signature uploaded successfully', signature });
   } catch (error) {
     res.status(500).json({ message: 'Error uploading signature', error: error.message });
