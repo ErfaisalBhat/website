@@ -291,11 +291,11 @@ const generateCertificate = async (req, res) => {
           .sort({ createdAt: -1 })
       ]);
 
-      if (authSnapSig) {
+      if (!result.snapshotAuthSignatureImage && authSnapSig) {
         result.snapshotAuthSignatureImage = authSnapSig.imageData || null;
         result.snapshotAuthSignatureLabel = authSnapSig.signatoryLabel || 'O.S.D. (Examination)';
       }
-      if (controllerSnapSig) {
+      if (!result.snapshotControllerSignatureImage && controllerSnapSig) {
         result.snapshotControllerSignatureImage = controllerSnapSig.imageData || null;
         result.snapshotControllerSignatureLabel = controllerSnapSig.signatoryLabel || 'Controller of Examination';
       }

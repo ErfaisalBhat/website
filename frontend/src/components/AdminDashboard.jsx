@@ -957,14 +957,6 @@ const AdminDashboard = () => {
                     <div className="mb-6 p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Active Signatures</h3>
-                        <button
-                          type="button"
-                          onClick={handleResetSignatureSnapshots}
-                          className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                          title="Apply currently active signatures to all issued certificates"
-                        >
-                          Sync to all issued certificates
-                        </button>
                       </div>
                       {activeCertSignatures.length > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
