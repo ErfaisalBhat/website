@@ -1,13 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import StudentHeader from './StudentHeader';
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const VerifyCertificate = () => {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const studentPortalUrl =
+    typeof window !== 'undefined' && window.location.hostname === 'verifyresults.vminstitute.in'
+      ? 'https://results.vminstitute.in/'
+      : '/';
+
+  const handleHomeClick = (e) => {
+    if (typeof window !== 'undefined') {
+      if (window.location.hostname === 'verifyresults.vminstitute.in') {
+        window.location.href = 'https://results.vminstitute.in/';
+        return;
+      }
+      e.preventDefault();
+      navigate('/');
+    }
+  };
 
   // ── Unified state ─────────────────────────────────────────────────────────
   const [certNo, setCertNo]         = useState(searchParams.get('certNo') || '');
@@ -116,6 +133,24 @@ const VerifyCertificate = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <StudentHeader />
+
+      {/* Navigation */}
+      <nav className="bg-gradient-to-r from-green-800 via-green-700 to-green-800 p-2 shadow-lg border-b border-white/20">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-row space-x-6">
+            <a
+              href={studentPortalUrl}
+              onClick={handleHomeClick}
+              className="text-white hover:text-green-200 transition-colors flex items-center gap-2 text-sm"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Home
+            </a>
+          </div>
+        </div>
+      </nav>
 
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">

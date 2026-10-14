@@ -353,6 +353,30 @@ const addTeacher = async (req, res) => {
     if (teacherExists) return res.status(201).json({ message: 'Teacher already exists' });
 
     const teacher = await User.create({ name, email, password, role: 'teacher' });
+
+    const message = `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; background-color: #f4f4f4;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
+    <div style="background-color: #4CAF50; color: #fff; padding: 15px; text-align: center; font-size: 20px; font-weight: bold;">
+      Welcome to Result Management System
+    </div>
+    <div style="padding: 20px;">
+      <p style="font-size: 16px; margin: 0;">Dear <strong>${teacher.name}</strong>,</p>
+      <p style="font-size: 16px; margin: 15px 0 0;">You have been registered as a Teacher in the Result Management System Portal by the Administrator.</p>
+      <div style="padding: 15px; border: 1px solid #ddd; border-radius: 8px; background-color: #f9f9f9; margin: 15px 0; font-size: 16px;">
+        <p style="margin: 0 0 8px 0;"><strong>Portal URL:</strong> <a href="https://resultsadmin.vminstitute.in/login" style="color: #4CAF50; text-decoration: none;">https://resultsadmin.vminstitute.in/login</a></p>
+        <p style="margin: 0 0 8px 0;"><strong>Email ID:</strong> ${teacher.email}</p>
+        <p style="margin: 0;"><strong>Password:</strong> ${password}</p>
+      </div>
+      <p style="font-size: 16px; color: #555; margin: 0;">
+        <strong>Important:</strong> Please ensure you keep this information confidential and do not share it with anyone.
+      </p>
+    </div>
+  </div>
+</div>`;
+
+    // Send email in the background without making the admin wait
+    mailSender(teacher.email, "Teacher Account Created - Login Credentials", message).catch(err => console.log('Mail error:', err));
+
     res.status(201).json({ _id: teacher._id, name: teacher.name, email: teacher.email, role: teacher.role });
   } catch (error) {
     res.status(500).json({ message: 'Error adding teacher', error: error.message });
