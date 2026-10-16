@@ -196,6 +196,12 @@ const generateCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Result not found' });
     }
 
+    const failedStatuses = ["r.a.", "result awaited", "ab", "absent", "e.r.", "essential repeat", "ra", "a.b.", "r.a", "a.b", "e.r", "er", "failed", "fail"];
+    const remarkEng = (result.resultRemarkEnglish || '').toLowerCase().trim();
+    if (failedStatuses.includes(remarkEng) || (result.resultRemarkHindi && result.resultRemarkHindi.includes('अनुत्तीर्ण')) || String(result.iaMarks).toUpperCase() === 'AB' || String(result.meMarks).toUpperCase() === 'AB') {
+      return res.status(403).json({ message: 'Certificate is not available for students with Absent / Essential Repeat / Failed status.' });
+    }
+
     // --- ZOHO PAYMENT LOGIC (ENABLED) ---
       const FREE_PERIOD_DAYS = 180;
       const currentDate = new Date();
@@ -553,6 +559,21 @@ const verifyCertificate = async (req, res) => {
       return res.status(404).json({ message: 'Invalid certificate number' });
     }
 
+    const failedStatuses = ["r.a.", "result awaited", "ab", "absent", "e.r.", "essential repeat", "ra", "a.b.", "r.a", "a.b", "e.r", "er", "failed", "fail"];
+    const remarkEng = (result.resultRemarkEnglish || '').toLowerCase().trim();
+    const isFailed = failedStatuses.includes(remarkEng) ||
+                     (result.resultRemarkHindi && result.resultRemarkHindi.includes('अनुत्तीर्ण')) ||
+                     String(result.iaMarks).toUpperCase() === 'AB' ||
+                     String(result.meMarks).toUpperCase() === 'AB';
+
+    if (isFailed) {
+      return res.json({
+        status: 'Not Applicable',
+        isAvailable: false,
+        message: 'Not Applicable'
+      });
+    }
+
     res.json({
       studentName: result.candidateNameEnglish,
       rollNo: result.rollNo,
@@ -564,6 +585,8 @@ const verifyCertificate = async (req, res) => {
       sNo: result.sNo,
       dateOfResultEnglish: formatResultDateFallback(result.dateOfResultEnglish),
       status: 'Verified',
+      isAvailable: true,
+      resultRemark: result.resultRemarkEnglish || '',
       profileImageId: result.student?.profileImageId
     });
   } catch (error) {
