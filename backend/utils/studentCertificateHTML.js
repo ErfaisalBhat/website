@@ -53,7 +53,14 @@ function buildStudentCertificateHTML(data, paths, origin) {
     profileImageId,
     authSignatureImage, authSignatureLabel,
     controllerSignatureImage, controllerSignatureLabel,
+    paperNameHindi, paperNameEnglish, academicYear,
   } = data;
+
+  // Single variable for certificate year (FIELD30 / Academic Year).
+  // Easily switchable to the year from the result date if needed: e.g. dateOfResultEnglish ? ... : ...
+  const certYear = academicYear || courseYearEnglish || courseYearHindi || '';
+  const paperHindi = paperNameHindi || courseNameHindi || '';
+  const paperEnglish = paperNameEnglish || courseNameEnglish || '';
 
   const displayCertNo = formatCertNo(certificateNo, rollNo);
   const qrData = certificateNo
@@ -254,8 +261,8 @@ function buildStudentCertificateHTML(data, paths, origin) {
 
     <!-- COURSE TITLE -->
     <div style="text-align:center;line-height:1.25;margin-bottom:4px;">
-      <div class="f-kokila" style="font-size:25px;">${esc(courseNameHindi)} प्रमाणपत्र</div>
-      <div class="f-tahoma" style="font-size:20px;letter-spacing:0.6px;text-transform:uppercase;">
+      <div class="f-kokila" style="font-size:25px;">${esc(courseNameHindi)}</div>
+      <div class="f-tahoma" style="font-size:18px;letter-spacing:0.6px;text-transform:uppercase;">
         ${esc(courseNameEnglish)}
       </div>
     </div>
@@ -263,8 +270,8 @@ function buildStudentCertificateHTML(data, paths, origin) {
     <!-- HINDI BODY -->
     <div style="text-align:center;line-height:1.4;margin-bottom:4px;margin-top:20px;">
       <div class="f-kokila" style="font-size:22px;">
-        प्रमाणित किया जाता है कि सन्&nbsp;<b>${esc(courseYearHindi)}</b>&nbsp;में परीक्षा के उपरांत&nbsp;
-        <b>${esc(courseNameHindi)}</b> की प्रमाणपत्र के योग्य सिद्ध होने पर
+        प्रमाणित किया जाता है कि सन्&nbsp;<b>${esc(certYear)}</b>&nbsp;में परीक्षा के उपरांत&nbsp;
+        <b>${esc(paperHindi)}</b> की प्रमाणपत्र के योग्य सिद्ध होने पर
       </div>
       <div style="font-size:${hindiNameFontSize};margin:4px 0 8px;">
         <b class="f-arya" style="vertical-align:baseline;">${esc(candidateNameHindi)}</b>
@@ -273,7 +280,7 @@ function buildStudentCertificateHTML(data, paths, origin) {
       </div>
       <div class="divider"></div>
       <div class="f-kokila" style="font-size:22px;">
-        को ${esc(courseYearHindi)} के संगोष्ठी में उक्त प्रमाणपत्र प्रदान की गई ।
+        को ${esc(certYear)} के संगोष्ठी में उक्त प्रमाणपत्र प्रदान की गई ।
       </div>
     </div>
 
@@ -281,14 +288,14 @@ function buildStudentCertificateHTML(data, paths, origin) {
     <div class="f-tahoma" style="text-align:center;line-height:1.45;margin-bottom:6px;margin-top:22px;font-size:15px;">
       <div>
         This is to certify that having been examined in&nbsp;
-        <b>${esc(courseYearEnglish)}</b> and found qualified for the certificate in
+        <b>${esc(certYear)}</b> and found qualified for the certificate in&nbsp;
+        <b>${esc(paperEnglish)}</b>,
       </div>
-      <div><b>${esc(courseNameEnglish)}</b></div>
-      <div style="font-size:15px;margin-bottom:4px;">
-        <b>${esc(candidateNameEnglish)}</b> d/o/s/o <b>${esc(fatherNameEnglish)}</b>
+      <div style="font-size:15px;margin-bottom:4px;margin-top:2px;">
+        <b>${esc(candidateNameEnglish)}</b> d/o/s/o <b>${esc(fatherNameEnglish)}</b>.
       </div>
       <div class="divider"></div>
-      <div>was awarded the said certificate at the conclave held in ${esc(courseYearEnglish)}.</div>
+      <div>was awarded the said certificate at the conclave held in ${esc(certYear)}.</div>
     </div>
 
     <!-- SECTION HEADING -->

@@ -1,87 +1,66 @@
 const xlsx = require('xlsx');
+const { processExcel } = require('./utils/fileParser');
 
-// Helper function to process Excel file
-const excelSerialDateToJSDate = (serialDate) => {
-  const epochStart = new Date(1900, 0, 1);
-  const daysOffset = serialDate < 60 ? 0 : 1;
-  const daysSinceEpoch = serialDate - daysOffset;
-  const millisSinceEpoch = daysSinceEpoch * 24 * 60 * 60 * 1000;
-  const date = new Date(epochStart.getTime() + millisSinceEpoch);
-  return date.toISOString().split('T')[0];
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return null;
-  const parts = dateString.split(/[-/]/);
-  if (parts.length === 3) {
-    if (dateString.includes('/')) {
-      let [month, day, year] = parts;
-      month = month.padStart(2, '0');
-      day = day.padStart(2, '0');
-      return `${day}-${month}-${year}`;
-    }
-    const [year, month, day] = parts;
-    return `${day}-${month}-${year}`;
-  }
-  return null;
-};
-
-// Create dummy workbook
+// Create dummy workbook with 35 columns matching new template structure
 const wb = xlsx.utils.book_new();
 const wsData = [
-  ['S.No', 'DOB', 'Roll No', 'Enrolment No', 'CourseNameH', 'CourseNameE', 'CourseYearH', 'CourseYearE', 'CandNameH', 'FatherNameH', 'CandNameE', 'FatherNameE', 'DurH', 'DurE', 'ModeH', 'ModeE', 'IASub', 'MESub', 'IAMax', 'MEMax', 'MaxMarks', 'IAMarks', 'MEMarks', 'MarksTot', 'RemH', 'RemE', 'DateH', 'DateE', 'SubCode', 'AcadYear', 'CourseName', 'ExamFlag', 'Part', 'Sem'],
-  [1, '01-01-2000', 'R001', 'E001', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 20, 80, 100, 15, 60, 75, '', 'Pass', '', '', '', '2023', '', '', '', '']
+  // Row 0: FIELD1 .. FIELD35
+  [
+    'FIELD1', 'FIELD2', 'FIELD3', 'FIELD4', 'FIELD5', 'FIELD6', 'FIELD7', 'FIELD8',
+    'FIELD9', 'FIELD10', 'FIELD11', 'FIELD12', 'FIELD13', 'FIELD14', 'FIELD15', 'FIELD16',
+    'FIELD17', 'FIELD18', 'FIELD19', 'FIELD20', 'FIELD21', 'FIELD22', 'FIELD23', 'FIELD24',
+    'FIELD25', 'FIELD26', 'FIELD27', 'FIELD28', 'FIELD29', 'FIELD30', 'FIELD31', 'FIELD32',
+    'FIELD33', 'FIELD34', 'FIELD35'
+  ],
+  // Row 1: Human-readable labels
+  [
+    'S. No.', 'Date of Birth', 'Roll No.', 'Enrolment Number', 'Paper Name (Hindi)', 'Paper Name (English)',
+    'Course Year (Hindi)', 'Course Year (English)', "Candidate's Name (Hindi)", "Father's Name (Hindi)",
+    "Candidate's Name (English)", "Father's Name (English)", 'Duration (Hindi)', 'Duration (English)',
+    'Mode (Hindi)', 'Mode (English)', 'IA Sub Code', 'ME Sub Code', 'IA Max Mark', 'ME Max Mark',
+    'Maximum Marks', 'Obtained IA Marks', 'Obtained ME Marks', 'Obtained Marks Total',
+    'Result Remark (Hindi)', 'Result Remark (English)', 'Date of Result (Hindi)', 'Date of Result (English)',
+    'Subject Code', 'Academic Year', 'Course Name (Hindi)', 'Course Name (English)',
+    'Exam Flag', 'Part', 'Semester'
+  ],
+  // Row 2: Data row
+  [
+    1, '2000-01-01', 'R001', 'E001', 'पेपर हिंदी', 'Paper English',
+    'प्रथम वर्ष', 'First Year', 'अभ्यर्थी', 'पिता',
+    'John Doe', 'Father Doe', 'एक वर्ष', 'One Year',
+    'नियमित', 'Regular', 'IA01', 'ME01', 20, 80,
+    100, 15, 65, 80,
+    'उत्तीर्ण', 'Passed', '15 मई 2025', '15 May 2025',
+    'SUB01', '2024-25', 'कोर्स हिंदी प्रमाणपत्र', 'Course English',
+    'Regular', 'I', '1'
+  ]
 ];
 
 const ws = xlsx.utils.aoa_to_sheet(wsData);
 xlsx.utils.book_append_sheet(wb, ws, "Sheet1");
 const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-// Simulate processExcel
-const workbook = xlsx.read(buffer);
-const sheet = workbook.Sheets[workbook.SheetNames[0]];
-const data = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-
-console.log("Parsed rows:", data.length);
-if (data.length > 1) {
-  console.log("Row 2 data:", data[1]);
-  console.log("Row 2 Max Marks:", data[1][20]);
+const results = processExcel(buffer);
+console.log("Parsed valid results count:", results.length);
+if (results.length > 0) {
+  const r = results[0];
+  console.log("Record 0 checks:");
+  console.log("  rollNo:", r.rollNo);
+  console.log("  enrolmentNo:", r.enrolmentNo);
+  console.log("  paperNameHindi:", r.paperNameHindi);
+  console.log("  paperNameEnglish:", r.paperNameEnglish);
+  console.log("  courseNameHindi:", r.courseNameHindi);
+  console.log("  courseNameEnglish:", r.courseNameEnglish);
+  console.log("  academicYear:", r.academicYear);
+  console.log("  maxMarks:", r.maxMarks);
+  console.log("  marksTotal:", r.marksTotal);
+  console.log("  resultRemarkEnglish:", r.resultRemarkEnglish);
+  console.log("  semester:", r.semester);
 }
 
-const results = data.slice(1).map(row => {
-  try {
-    if (!row[2] || !row[3] || !row[1]) {
-      console.log('Validation failed: missing row 1, 2, or 3', {r1: row[1], r2: row[2], r3: row[3]});
-      return null;
-    }
-
-    let dateOfBirth;
-    if (typeof row[1] === 'number') {
-      dateOfBirth = excelSerialDateToJSDate(row[1]);
-    } else {
-      dateOfBirth = formatDate(row[1].toString());
-    }
-
-    if (!dateOfBirth) {
-      console.warn(`Warning: Invalid date format for roll number ${row[2]}`);
-      return null;
-    }
-
-    const maxMarks = parseFloat(row[20]);
-    if (!maxMarks || isNaN(maxMarks)) {
-      console.warn(`Warning: Maximum Marks is invalid for roll number ${row[2]}:`, row[20]);
-      return null;
-    }
-
-    return {
-      rollNo: row[2],
-      enrolmentNo: row[3],
-      maxMarks
-    };
-  } catch (e) {
-    console.error(e);
-    return null;
-  }
-}).filter(result => result !== null && result.rollNo && result.enrolmentNo && result.maxMarks > 0);
-
-console.log("Valid results:", results.length);
+if (results.length === 1 && results[0].paperNameEnglish === 'Paper English' && results[0].courseNameHindi === 'कोर्स हिंदी प्रमाणपत्र') {
+  console.log("✅ All tests passed!");
+} else {
+  console.error("❌ Test failed!");
+  process.exit(1);
+}

@@ -678,26 +678,36 @@ const AdminDashboard = () => {
     if (!previewData || !previewData.results.length) return;
     
     const headers = [
-      'S. No.', 'Date of Birth', 'Roll No.', 'Enrolment Number', 'Course Name (Hindi)', 
-      'Course Name (English)', 'Course Year (Hindi)', 'Course Year (English)', 
-      "Candidate's Name (Hindi)", "Father's Name (Hindi)", "Candidate's Name (English)", 
-      "Father's Name (English)", 'Duration (Hindi)', 'Duration (English)', 'Mode (Hindi)', 
-      'Mode (English)', 'IA Sub Code', 'ME Sub Code', 'IA Max Mark', 'ME Max Mark', 
+      'S. No.', 'Date of Birth', 'Roll No.', 'Enrolment Number', 
+      'Paper Name (Hindi)', 'Paper Name (English)', 
+      'Course Year (Hindi)', 'Course Year (English)', 
+      "Candidate's Name (Hindi)", "Father's Name (Hindi)", 
+      "Candidate's Name (English)", "Father's Name (English)", 
+      'Duration (Hindi)', 'Duration (English)', 'Mode (Hindi)', 'Mode (English)', 
+      'IA Sub Code', 'ME Sub Code', 'IA Max Mark', 'ME Max Mark', 
       'Maximum Marks', 'Obtained IA Marks', 'Obtained ME Marks', 'Obtained Marks Total', 
-      'Result Remark (Hindi)', 'Result Remark (English)', 'Date of Result (Hindi)', 
-      'Date of Result (English)', 'Subject Code', 'Academic Year', 'Course Name', 
+      'Result Remark (Hindi)', 'Result Remark (English)', 
+      'Date of Result (Hindi)', 'Date of Result (English)', 
+      'Subject Code', 'Academic Year', 
+      'Course Name (Hindi)', 'Course Name (English)', 
       'Exam Flag', 'Part', 'Semester'
     ];
     
     const rows = previewData.results.map(r => [
-      r.sNo || '', r.dateOfBirth || '', r.rollNo || '', r.enrolmentNo || '', r.courseNameHindi || '',
-      r.courseNameEnglish || '', r.courseYearHindi || '', r.courseYearEnglish || '',
-      r.candidateNameHindi || '', r.fatherNameHindi || '', r.candidateNameEnglish || '',
-      r.fatherNameEnglish || '', r.durationHindi || '', r.durationEnglish || '', r.modeHindi || '',
-      r.modeEnglish || '', r.iaSubCode || '', r.meSubCode || '', r.iaMaxMarks || 0, r.meMaxMarks || 0,
+      r.sNo || '', r.dateOfBirth || '', r.rollNo || '', r.enrolmentNo || '', 
+      r.paperNameHindi || '', r.paperNameEnglish || '', 
+      r.courseYearHindi || '', r.courseYearEnglish || '',
+      r.candidateNameHindi || '', r.fatherNameHindi || '', 
+      r.candidateNameEnglish || '', r.fatherNameEnglish || '', 
+      r.durationHindi || '', r.durationEnglish || '', 
+      r.modeHindi || '', r.modeEnglish || '', 
+      r.iaSubCode || '', r.meSubCode || '', 
+      r.iaMaxMarks || 0, r.meMaxMarks || 0,
       r.maxMarks || 0, r.iaMarks || 0, r.meMarks || 0, r.marksTotal || 0,
-      r.resultRemarkHindi || '', r.resultRemarkEnglish || '', r.dateOfResultHindi || '',
-      formatDisplayResultDate(r.dateOfResultEnglish) || '', r.subjectCode || '', r.academicYear || '', r.courseName || '',
+      r.resultRemarkHindi || '', r.resultRemarkEnglish || '', 
+      r.dateOfResultHindi || '', formatDisplayResultDate(r.dateOfResultEnglish) || '', 
+      r.subjectCode || '', r.academicYear || '', 
+      r.courseNameHindi || '', r.courseNameEnglish || '',
       r.examFlag || '', r.part || '', r.semester || ''
     ]);
 
@@ -901,19 +911,31 @@ const AdminDashboard = () => {
 
                 {activeResultUploadTab === 'upload_records' && (
                   <div>
-                    <div className="flex justify-between items-start mb-5">
+                    <div className="flex justify-between items-start mb-5 flex-wrap gap-3">
                       <div>
                         <h2 className="text-xl font-semibold tracking-tight text-slate-900">Upload Records</h2>
-                        
+                        <p className="text-xs text-slate-500 mt-0.5">Upload degree examination records via Excel (.xlsx) or CSV</p>
                       </div>
-                      <a 
-                        href="/sample-result-template.xlsx" 
-                        download 
-                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all border border-slate-300 shadow-sm"
-                      >
-                        <DocumentTextIcon className="w-4 h-4" />
-                        Result Template
-                      </a>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <a 
+                          href="/Degree_Template.xlsx" 
+                          download="Degree_Template.xlsx" 
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all border border-slate-300 shadow-sm"
+                          title="Download Degree Excel Template"
+                        >
+                          <DocumentTextIcon className="w-4 h-4 text-emerald-600" />
+                          Degree Template (.xlsx)
+                        </a>
+                        <a 
+                          href="/Degree_Template.csv" 
+                          download="Degree_Template.csv" 
+                          className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-all border border-slate-300 shadow-sm"
+                          title="Download Degree CSV Template"
+                        >
+                          <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+                          Degree Template (.csv)
+                        </a>
+                      </div>
                     </div>
                     <form onSubmit={handleUpload} className="space-y-4">
                       <div>
@@ -944,6 +966,26 @@ const AdminDashboard = () => {
                       <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-800 active:scale-[0.99] transition-all shadow-sm">
                         Upload Records
                       </button>
+
+                      {/* Sample Template Downloads */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <a
+                          href="/Degree_Template.xlsx"
+                          download="Degree_Template.xlsx"
+                          className="border-2 border-dashed border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-semibold hover:border-slate-800 hover:text-slate-900 transition-all flex items-center justify-center gap-2 text-xs"
+                        >
+                          <DocumentTextIcon className="w-4 h-4 text-emerald-600" />
+                          Download Degree Template (.xlsx)
+                        </a>
+                        <a
+                          href="/Degree_Template.csv"
+                          download="Degree_Template.csv"
+                          className="border-2 border-dashed border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-semibold hover:border-slate-800 hover:text-slate-900 transition-all flex items-center justify-center gap-2 text-xs"
+                        >
+                          <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+                          Download Degree Template (.csv)
+                        </a>
+                      </div>
                     </form>
                   </div>
                 )}
@@ -1970,6 +2012,8 @@ const AdminDashboard = () => {
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Student (Hin)</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Eng)</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Father (Hin)</th>
+                      <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Paper (Eng)</th>
+                      <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Paper (Hin)</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Course (Eng)</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Course (Hin)</th>
                       <th className="p-2 border-b border-r font-bold text-gray-500 uppercase whitespace-nowrap">Year (Eng)</th>
@@ -2040,6 +2084,8 @@ const AdminDashboard = () => {
                         <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.candidateNameHindi}</td>
                         <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameEnglish}</td>
                         <td className="p-2 border-r text-gray-600 whitespace-nowrap">{r.fatherNameHindi}</td>
+                        <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.paperNameEnglish || '—'}</td>
+                        <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.paperNameHindi || '—'}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.courseNameEnglish}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.courseNameHindi}</td>
                         <td className="p-2 border-r text-gray-500 whitespace-nowrap">{r.courseYearEnglish}</td>

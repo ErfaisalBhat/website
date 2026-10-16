@@ -96,6 +96,14 @@ const resultSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  paperNameHindi: {
+    type: String,
+    default: ''
+  },
+  paperNameEnglish: {
+    type: String,
+    default: ''
+  },
   courseNameHindi: {
     type: String,
     default: ''
