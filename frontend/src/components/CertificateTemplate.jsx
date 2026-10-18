@@ -57,9 +57,10 @@ const CertificateTemplate = ({ certificateData }) => {
     paperNameHindi, paperNameEnglish, academicYear
   } = certificateData || {};
 
-  // Single variable for certificate year (FIELD30 / Academic Year).
-  // Easily switchable to the year from the result date if needed: e.g. dateOfResultEnglish ? ... : ...
-  const certYear = academicYear || courseYearEnglish || courseYearHindi || '';
+  // Certificate year = COURSE YEAR (not the academic year).
+  // academicYear is still destructured above in case it is needed elsewhere.
+  const certYearHindi   = courseYearHindi   || courseYearEnglish || '';
+  const certYearEnglish = courseYearEnglish || courseYearHindi   || '';
   const paperHindi = paperNameHindi || courseNameHindi || '';
   const paperEnglish = paperNameEnglish || courseNameEnglish || '';
 
@@ -310,7 +311,7 @@ const CertificateTemplate = ({ certificateData }) => {
           <div style={{ textAlign:'center', lineHeight:1.3, marginBottom:'2px', marginTop:'10px' }}>
             <div style={{ ...kokila, fontSize:'22px' }}>
               प्रमाणित किया जाता है कि सन्&nbsp;
-              <b>{certYear}</b>&nbsp;में परीक्षा के उपरांत&nbsp;
+              <b>{certYearHindi}</b>&nbsp;में परीक्षा के उपरांत&nbsp;
               <b>{paperHindi}</b> की प्रमाणपत्र के योग्य सिद्ध होने पर
             </div>
             <div style={{ fontSize:hindiNameFontSize, margin:'4px 0 8px' }}>
@@ -320,7 +321,7 @@ const CertificateTemplate = ({ certificateData }) => {
             </div>
             <div style={divider} />
             <div style={{ ...kokila, fontSize:'22px' }}>
-              को {certYear} के संगोष्ठी में उक्त प्रमाणपत्र प्रदान की गई ।
+              को {certYearHindi} के संगोष्ठी में उक्त प्रमाणपत्र प्रदान की गई ।
             </div>
           </div>
 
@@ -329,14 +330,14 @@ const CertificateTemplate = ({ certificateData }) => {
           <div style={{ textAlign:'center', lineHeight:1.35, marginBottom:'4px', marginTop:'10px', ...tahoma, fontSize:'15px' }}>
             <div>
               This is to certify that having been examined in&nbsp;
-              <b>{certYear}</b> and found qualified for the certificate in&nbsp;
+              <b>{certYearEnglish}</b> and found qualified for the certificate in&nbsp;
               <b>{paperEnglish}</b>,
             </div>
             <div style={{ fontSize:'15px', marginBottom: '4px', marginTop: '2px' }}>
               <b>{candidateNameEnglish}</b> d/o/s/o <b>{fatherNameEnglish}</b>.
             </div>
             <div style={divider} />
-            <div>was awarded the said certificate at the conclave held in {certYear}.</div>
+            <div>was awarded the said certificate at the conclave held in {certYearEnglish}.</div>
           </div>
 
           {spacer}
