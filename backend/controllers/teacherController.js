@@ -151,15 +151,7 @@ const searchByAcademicYear = async (req, res) => {
             courseName: "$courseName",
             academicYear: "$academicYear"
           },
-          dateOfResultEnglish: {
-            $first: {
-              $cond: [
-                { $gt: [{ $strLenCP: { $trim: { input: { $ifNull: ["$dateOfResultEnglish", ""] } } } }, 0] },
-                "$dateOfResultEnglish",
-                null
-              ]
-            }
-          },
+          dateOfResultEnglish: { $max: "$dateOfResultEnglish" },
           // Track the latest approval/upload time for sorting
           latestApprovedAt: { $max: "$approvedAt" },
           latestCreatedAt:  { $max: "$createdAt" }
@@ -181,12 +173,8 @@ const searchByAcademicYear = async (req, res) => {
           part:         "$_id.part",
           courseName:   "$_id.courseName",
           academicYear: "$_id.academicYear",
-          declaredOn:   {
-            $ifNull: [
-              "$dateOfResultEnglish",
-              { $ifNull: ["$latestApprovedAt", "$latestCreatedAt"] }
-            ]
-          }
+          declaredOn:   "$dateOfResultEnglish",
+          dateOfResultEnglish: "$dateOfResultEnglish"
         }
       }
     ]);

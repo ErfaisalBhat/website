@@ -215,7 +215,7 @@ const ResultSearch = () => {
                   <td className="border border-gray-300 px-4 py-2">{result.part}</td>
                   <td className="border border-gray-300 px-4 py-2">{result.semester}</td>
                   <td className="border border-gray-300 px-4 py-2 text-gray-600 whitespace-nowrap">
-                    {formatDate(result.declaredOn)}
+                    {formatDate(result.dateOfResultEnglish || result.declaredOn)}
                   </td>
                 </tr>
               ))}
