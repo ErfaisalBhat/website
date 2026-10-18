@@ -298,10 +298,10 @@ const CertificateTemplate = ({ certificateData }) => {
           {spacer}
           {/* ══ COURSE TITLE (unbold, auto-shrinks to stay on ONE line each) ══ */}
           <div style={{ lineHeight:1.25, marginBottom:'4px' }}>
-            <FitLine baseSize={25} style={{ ...kokila, fontWeight:'normal' }}>
+            <FitLine baseSize={23} style={{ ...kokila, fontWeight:'normal' }}>
               {courseNameHindi || ''}
             </FitLine>
-            <FitLine baseSize={17} style={{ ...tahoma, fontWeight:'normal', letterSpacing:'0.6px' }}>
+            <FitLine baseSize={14} style={{ ...tahoma, fontWeight:'normal', letterSpacing:'0.6px' }}>
               {courseNameEnglish || ''}
             </FitLine>
           </div>
@@ -331,7 +331,7 @@ const CertificateTemplate = ({ certificateData }) => {
             <div>
               This is to certify that having been examined in&nbsp;
               <b>{certYearEnglish}</b> and found qualified for the certificate in&nbsp;
-              <b>{paperEnglish}</b>,
+              <b>{paperEnglish}</b>
             </div>
             <div style={{ fontSize:'15px', marginBottom: '4px', marginTop: '2px' }}>
               <b>{candidateNameEnglish}</b> d/o/s/o <b>{fatherNameEnglish}</b>.
