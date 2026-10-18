@@ -119,6 +119,9 @@ const searchByAcademicYear = async (req, res) => {
     const compactYear = trimmedYear.replace(/\s*-\s*/g, '-');
     const spacedYear = trimmedYear.replace(/\s*-\s*/g, ' - ');
     const yearsToMatch = Array.from(new Set([trimmedYear, compactYear, spacedYear]));
+    if (compactYear.includes('-')) {
+      yearsToMatch.push(compactYear.split('-')[0].trim());
+    }
 
     const results = await Result.aggregate([
       { $match: { academicYear: { $in: yearsToMatch } } },

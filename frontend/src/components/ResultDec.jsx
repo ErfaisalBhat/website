@@ -133,19 +133,12 @@ const ResultSearch = () => {
       }
     }
 
-    // Handle ISO date timestamps (e.g. 2026-10-18T... from fallback)
+    // Never convert database ISO timestamps into today's date
     if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
-      const d = new Date(str);
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        });
-      }
+      return "—";
     }
 
-    // If it's already a formatted date string from CSV (e.g. "15 July 2026", "15 May 2025")
+    // Return the CSV Date of Result string directly (e.g. "15 July 2026", "15 May 2025")
     return str;
   };
 
