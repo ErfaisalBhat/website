@@ -86,11 +86,15 @@ function buildStudentCertificateHTML(data, paths, origin) {
   const ctrlSigSrc = sigSrc(controllerSignatureImage, paths.defaultCtrlSig);
   const authSigSrc = sigSrc(authSignatureImage,       paths.defaultAuthSig);
 
-  // Photo
+  // Photo (TEMPORARY: Completely hidden when no photo is uploaded.
+  // To re-enable placeholder box later, restore:
+  // const photoHTML = profileImageId
+  //   ? `<img src="${profileImageId}" alt="Student" style="width:100%;height:100%;object-fit:cover;" />`
+  //   : `<div style="font-family:'Tahoma','Arial',sans-serif;font-size:9px;color:#999;text-align:center;">Photo</div>`;
+  // and in the template: <div class="student-photo">${photoHTML}</div>
   const photoHTML = profileImageId
-    ? `<img src="${profileImageId}" alt="Student"
-           style="width:100%;height:100%;object-fit:cover;" />`
-    : `<div style="font-family:'Tahoma','Arial',sans-serif;font-size:9px;color:#999;text-align:center;">Photo</div>`;
+    ? `<div class="student-photo" style="border:none;"><img src="${profileImageId}" alt="Student" style="width:100%;height:100%;object-fit:cover;" /></div>`
+    : '';
 
   // Dynamic font sizes (mirrors CertificateTemplate.jsx logic)
   const hindiNameLen      = (candidateNameHindi || '').length + (fatherNameHindi || '').length;
@@ -251,7 +255,7 @@ function buildStudentCertificateHTML(data, paths, origin) {
     </div>
 
     <!-- Student photo (absolute, top-right) -->
-    <div class="student-photo">${photoHTML}</div>
+    ${photoHTML}
 
     <!-- INSTITUTE TITLE -->
     <div style="text-align:center;line-height:1.2;margin-bottom:6px;margin-top:8px;">
@@ -292,7 +296,7 @@ function buildStudentCertificateHTML(data, paths, origin) {
         <b>${esc(paperEnglish)}</b>,
       </div>
       <div style="font-size:15px;margin-bottom:4px;margin-top:2px;">
-        <b>${esc(candidateNameEnglish)}</b> d/o/s/o <b>${esc(fatherNameEnglish)}</b>.
+        <b>${esc(candidateNameEnglish)}</b> d/o/s/o <b>${esc(fatherNameEnglish)}</b>
       </div>
       <div class="divider"></div>
       <div>was awarded the said certificate at the conclave held in ${esc(certYear)}.</div>

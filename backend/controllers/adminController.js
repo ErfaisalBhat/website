@@ -244,11 +244,14 @@ const approveBatch = async (req, res) => {
 
     // Check if all students in the batch have photos uploaded
     const results = await Result.find({ batchId }).populate('student');
+    // TEMPORARY: Disabled photo requirement so admin can approve records without photos.
+    // To re-enable mandatory photos later, uncomment the check below:
+    /*
     const missingPhotos = results.filter(r => !r.student || !r.student.profileImageId);
-
     if (missingPhotos.length > 0) {
       return res.status(400).json({ message: `Cannot approve batch. ${missingPhotos.length} student(s) missing photos.` });
     }
+    */
 
     // ── Snapshot active signatures at approval time ──────────────────────────
     // Permanently locks the current active sigs into every result in this batch.

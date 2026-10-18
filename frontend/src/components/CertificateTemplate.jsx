@@ -274,19 +274,24 @@ const CertificateTemplate = ({ certificateData }) => {
           </div>
 
           {/* ── Student photo (absolute, top-right) ── */}
-          <div style={{
-            position:'absolute', top:'114px', right:'46px',
-            width:'78px', height:'98px',
-            border: photoSrc ? 'none' : '1.5px solid #444',
-            overflow:'hidden',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            backgroundColor:'#f9f9f9',
-          }}>
-            {photoSrc
-              ? <img src={photoSrc} alt="Student" style={{ width:'100%', height:'100%', objectFit:'cover' }} referrerPolicy="no-referrer" />
-              : <div style={{ ...tahoma, fontSize:'9px', color:'#999', textAlign:'center' }}>Photo</div>
-            }
-          </div>
+          {/* TEMPORARY: Photo box completely hidden when no photo is uploaded.
+              To re-enable the placeholder box later, restore the fallback div:
+              <div style={{ position:'absolute', top:'114px', right:'46px', width:'78px', height:'98px', border: photoSrc ? 'none' : '1.5px solid #444', ... }}>
+                {photoSrc ? <img ... /> : <div style={{ ...tahoma, fontSize:'9px', color:'#999', textAlign:'center' }}>Photo</div>}
+              </div>
+          */}
+          {photoSrc && (
+            <div style={{
+              position:'absolute', top:'114px', right:'46px',
+              width:'78px', height:'98px',
+              border: 'none',
+              overflow:'hidden',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              backgroundColor:'#f9f9f9',
+            }}>
+              <img src={photoSrc} alt="Student" style={{ width:'100%', height:'100%', objectFit:'cover' }} referrerPolicy="no-referrer" />
+            </div>
+          )}
 
           {/* ══ INSTITUTE TITLE ══ */}
           {/* Hindi is the larger line, English is reduced so the two look balanced */}
@@ -334,7 +339,7 @@ const CertificateTemplate = ({ certificateData }) => {
               <b>{paperEnglish}</b>
             </div>
             <div style={{ fontSize:'15px', marginBottom: '4px', marginTop: '2px' }}>
-              <b>{candidateNameEnglish}</b> d/o/s/o <b>{fatherNameEnglish}</b>.
+              <b>{candidateNameEnglish}</b> d/o/s/o <b>{fatherNameEnglish}</b>
             </div>
             <div style={divider} />
             <div>was awarded the said certificate at the conclave held in {certYearEnglish}.</div>

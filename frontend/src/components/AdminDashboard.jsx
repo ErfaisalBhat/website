@@ -966,26 +966,6 @@ const AdminDashboard = () => {
                       <button type="submit" className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-slate-800 active:scale-[0.99] transition-all shadow-sm">
                         Upload Records
                       </button>
-
-                      {/* Sample Template Downloads */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <a
-                          href="/Degree_Template.xlsx"
-                          download="Degree_Template.xlsx"
-                          className="border-2 border-dashed border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-semibold hover:border-slate-800 hover:text-slate-900 transition-all flex items-center justify-center gap-2 text-xs"
-                        >
-                          <DocumentTextIcon className="w-4 h-4 text-emerald-600" />
-                          Download Degree Template (.xlsx)
-                        </a>
-                        <a
-                          href="/Degree_Template.csv"
-                          download="Degree_Template.csv"
-                          className="border-2 border-dashed border-slate-300 text-slate-600 py-2.5 px-4 rounded-lg font-semibold hover:border-slate-800 hover:text-slate-900 transition-all flex items-center justify-center gap-2 text-xs"
-                        >
-                          <DocumentTextIcon className="w-4 h-4 text-blue-600" />
-                          Download Degree Template (.csv)
-                        </a>
-                      </div>
                     </form>
                   </div>
                 )}

@@ -279,10 +279,10 @@ const StudentLogin = () => {
               <div className="bg-red-50/90 backdrop-blur-md border-l-4 border-red-500 p-3 rounded-lg shadow-md">
                 <div className="flex flex-col space-y-1">
                   <p className="text-red-700 font-medium text-center text-sm">
-                    Students are advised to save their Statement of Marks / Diploma Certificate for future purpose.
+                    Students are advised to save their Statement of Marks / Certificate for future purpose.
                   </p>
                   <p className="text-red-700 font-medium text-center text-sm">
-                    This link will not be available later.
+                    The certificate downloadable within 180 days of issuance; fees apply thereafter.
                   </p>
                 </div>
               </div>
@@ -291,12 +291,9 @@ const StudentLogin = () => {
             {/* Login Form */}
             <div className="max-w-md mx-auto mb-4">
               <div className="bg-white/90 backdrop-blur-md rounded-lg shadow-lg p-6 border border-white/30">
-                <h2 className="text-lg font-bold text-center text-gray-800 mb-1">
+                <h2 className="text-lg font-bold text-center text-gray-800 mb-4">
                   Student Login
                 </h2>
-                <p className="text-xs text-center text-gray-500 mb-4">
-                  Works for both Degree Results and Diploma Certificates
-                </p>
 
                 {error && (
                   <div className="mb-3 p-2 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
