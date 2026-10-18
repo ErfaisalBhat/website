@@ -115,8 +115,32 @@ const searchByAcademicYear = async (req, res) => {
   if (!academicYear) return res.status(400).json({ message: 'Academic Year is required' });
 
   try {
+    const trimmedYear = String(academicYear).trim();
+    const compactYear = trimmedYear.replace(/\s*-\s*/g, '-');
+    const spacedYear = trimmedYear.replace(/\s*-\s*/g, ' - ');
+    const yearsToMatch = Array.from(new Set([trimmedYear, compactYear, spacedYear]));
+
     const results = await Result.aggregate([
-      { $match: { academicYear } },
+      { $match: { academicYear: { $in: yearsToMatch } } },
+      // Prioritize documents having non-empty CSV Date of Result (Field 28)
+      {
+        $addFields: {
+          hasDateOfResult: {
+            $cond: [
+              { $gt: [{ $strLenCP: { $trim: { input: { $ifNull: ["$dateOfResultEnglish", ""] } } } }, 0] },
+              1,
+              0
+            ]
+          }
+        }
+      },
+      {
+        $sort: {
+          hasDateOfResult: -1,
+          approvedAt: -1,
+          createdAt: -1
+        }
+      },
       {
         $group: {
           _id: {
@@ -126,6 +150,15 @@ const searchByAcademicYear = async (req, res) => {
             part: "$part",
             courseName: "$courseName",
             academicYear: "$academicYear"
+          },
+          dateOfResultEnglish: {
+            $first: {
+              $cond: [
+                { $gt: [{ $strLenCP: { $trim: { input: { $ifNull: ["$dateOfResultEnglish", ""] } } } }, 0] },
+                "$dateOfResultEnglish",
+                null
+              ]
+            }
           },
           // Track the latest approval/upload time for sorting
           latestApprovedAt: { $max: "$approvedAt" },
@@ -148,7 +181,12 @@ const searchByAcademicYear = async (req, res) => {
           part:         "$_id.part",
           courseName:   "$_id.courseName",
           academicYear: "$_id.academicYear",
-          declaredOn:   { $ifNull: ["$latestApprovedAt", "$latestCreatedAt"] }
+          declaredOn:   {
+            $ifNull: [
+              "$dateOfResultEnglish",
+              { $ifNull: ["$latestApprovedAt", "$latestCreatedAt"] }
+            ]
+          }
         }
       }
     ]);

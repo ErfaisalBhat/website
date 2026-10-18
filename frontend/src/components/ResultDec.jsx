@@ -87,13 +87,66 @@ const ResultSearch = () => {
     }
   };
 
-  const formatDate = (iso) => {
-    if (!iso) return "—";
-    return new Date(iso).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
+  const formatDate = (val) => {
+    if (!val) return "—";
+    const str = String(val).trim();
+    if (!str) return "—";
+
+    // Handle Excel Serial Dates (number or 5-digit string like 46178)
+    if (/^\d{5}$/.test(str)) {
+      const num = parseInt(str, 10);
+      const d = new Date(Math.round((num - 25569) * 864e5));
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    // Handle DD-MM-YYYY or DD/MM/YYYY
+    const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (dmyMatch) {
+      const [_, d, m, y] = dmyMatch;
+      const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    // Handle YYYY-MM-DD
+    const ymdMatch = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (ymdMatch) {
+      const [_, y, m, d] = ymdMatch;
+      const parsed = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    // Handle ISO date timestamps (e.g. 2026-10-18T... from fallback)
+    if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+      const d = new Date(str);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+
+    // If it's already a formatted date string from CSV (e.g. "15 July 2026", "15 May 2025")
+    return str;
   };
 
   return (
